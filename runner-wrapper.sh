@@ -10,4 +10,4 @@ SECUREDROP_DEV_VM="sd-ssh"
 bash /home/user/runner.sh |& qvm-run --pass-io "${SECUREDROP_DEV_VM}" "cat > ${LOG}"
 
 # Rename log so the next job doesn't clobber it
-qvm-run --pass-io "${SECUREDROP_DEV_VM}" "test -s ${LOG} && mv ${LOG} ${LOG}.${NOW}"
+qvm-run --pass-io "${SECUREDROP_DEV_VM}" "mv ${LOG} ${LOG}.${NOW}"
