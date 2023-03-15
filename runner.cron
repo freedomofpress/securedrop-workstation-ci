@@ -1,1 +1,2 @@
-*/5 * * * * user flock -w 3600 /var/tmp/runner -c /home/user/runner.sh
+*/5 * * * * user flock -w 3600 /var/tmp/runner -c /home/user/runner.sh > /var/log/runner.log 2>&1 
+# we would want that /var/log/runner.log to be passed back to sd-ssh for POSTing back to Github as a comment
