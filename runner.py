@@ -84,7 +84,7 @@ class QubesCI:
         subprocess.check_call(["make", "test"])
 
 
-    def teardown():
+    def teardown(self):
         """
         Teardown - uninstall all the VMs/templates and any other cruft.
         """
