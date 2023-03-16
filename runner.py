@@ -88,10 +88,6 @@ class QubesCI:
         """
         Teardown - uninstall all the VMs/templates and any other cruft.
         """
-        # @TODO work out if I still need to re-attach the PCI device like this
-        #usb = subprocess.check_call(["qvm-pci", "list", "sys-usb", "|", "grep", "USB"])
-        #subprocess.check_call(["qvm-pci", "detach" self.securedrop_usb_vm, usb])
-        #subprocess.check_call(["qvm-pci", "attach", "--persistent", "-o", "no-strict-reset=True", self.securedrop_usb_vm, usb])
         print(f"====> Removing {self.securedrop_usb_vm}")
         if usb_vm.is_running():
             usb_vm.kill()
