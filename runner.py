@@ -83,8 +83,8 @@ class QubesCI:
         """
         Teardown - uninstall all the VMs/templates and any other cruft.
         """
-        if usb_vm.is_running():
-            usb_vm.kill()
+        if self.usb_vm.is_running():
+            self.usb_vm.kill()
         subprocess.check_call(["qvm-remove", "-f", self.securedrop_usb_vm])
 
         # Rebuild the sys-usb with Salt
