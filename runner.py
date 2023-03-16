@@ -4,6 +4,7 @@ import os
 import qubesadmin
 import shutil
 import subprocess
+import sys
 
 class QubesCI:
 
@@ -124,3 +125,6 @@ if __name__ == "__main__":
         ci.build()
         ci.test()
         ci.teardown()
+    else:
+        # exit 1, so that the wrapper script doesn't move the current log file
+        sys.exit(1)
