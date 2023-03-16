@@ -69,6 +69,7 @@ class QubesCI:
             ], stdout = tarball)
             subprocess.check_call(["tar", "xvf", self.tar_file])
 
+
     def test(self):
         """
         Run the tests!
@@ -101,7 +102,7 @@ class QubesCI:
 
         # Uninstall all the other VMs
         print("====> Uninstalling all other VMs")
-        subprocess.check_call(["sudo", "python3", f"{self.working_dir}/scripts/sdw-admin.py", "--uninstall", "--force"])
+        subprocess.check_call([f"{self.working_dir}/scripts/sdw-admin.py", "--uninstall", "--force"])
 
         # Remove final remaining cruft on dom0
         cruft_dirs = [
