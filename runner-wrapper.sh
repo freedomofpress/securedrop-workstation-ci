@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eox pipefail
+set -eo pipefail
 
 NOW=$(date +%y%m%s%H%M%S)
 LOG="/home/user/securedrop-workstation-test.log"
