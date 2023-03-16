@@ -126,5 +126,5 @@ if __name__ == "__main__":
         ci.test()
         ci.teardown()
     else:
-        # exit 1, so that the wrapper script doesn't move the current log file
+        # exit 1 will prevent the wrapper from moving a potentially empty log file on each cron run
         sys.exit(1)
