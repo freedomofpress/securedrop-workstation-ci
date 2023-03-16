@@ -41,7 +41,6 @@ class QubesCI:
             state_file_exists = self.ssh_vm.run(f"stat {state_file} && rm -f {state_file}")
         except Exception as e:
             return False
-        print("====> State file existed! We will proceed...")
         return True
 
 
@@ -59,7 +58,6 @@ class QubesCI:
             shutil.rmtree(self.working_dir)
 
         # Generate our tarball in the appVM and extract it into dom0
-        print("====> Making tarball from appVM for dom0 to install")
         self.tar_file = f"{self.securedrop_repo_dir}.tar"
         with open(self.tar_file, "w") as tarball:
             subprocess.check_call([
@@ -76,11 +74,8 @@ class QubesCI:
         Run the tests!
         """
         os.chdir(self.working_dir)
-        print("====> Running make clone")
         subprocess.check_call(["make", "clone"])
-        print("====> Running make dev")
         subprocess.check_call(["make", "dev"])
-        print("====> Running make test")
         subprocess.check_call(["make", "test"])
 
 
@@ -88,17 +83,14 @@ class QubesCI:
         """
         Teardown - uninstall all the VMs/templates and any other cruft.
         """
-        print(f"====> Removing {self.securedrop_usb_vm}")
         if usb_vm.is_running():
             usb_vm.kill()
         subprocess.check_call(["qvm-remove", "-f", self.securedrop_usb_vm])
 
         # Rebuild the sys-usb with Salt
-        print(f"====> Rebuilding {self.securedrop_usb_vm}")
         subprocess.check_call(["sudo", "qubesctl", "state.sls", "qvm.sys-usb"])
 
         # Uninstall all the other VMs
-        print("====> Uninstalling all other VMs")
         subprocess.check_call([f"{self.working_dir}/scripts/sdw-admin.py", "--uninstall", "--force"])
 
         # Remove final remaining cruft on dom0
@@ -108,10 +100,8 @@ class QubesCI:
         ]
         for cruft in cruft_dirs:
             if os.path.exists(cruft):
-                print(f"====> Removing {cruft}")
                 subprocess.check_call(["sudo", "rm", "-rf", cruft])
         if os.path.exists(self.tar_file):
-            print(f"====> Removing {self.tar_file}")
             os.remove(self.tar_file)
 
 
