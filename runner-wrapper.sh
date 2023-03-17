@@ -10,7 +10,7 @@ SECUREDROP_DEV_VM="sd-ssh"
 /home/user/runner.py |& qvm-run --pass-io "${SECUREDROP_DEV_VM}" "cat > ${LOG}"
 
 # Rename log so the next job doesn't clobber it
-qvm-run --pass-io "${SECUREDROP_DEV_VM}" "mv ${LOG} ${LOG}.${NOW}"
+qvm-run --pass-io "${SECUREDROP_DEV_VM}" "mv ${LOG} ${LOG}.${NOW}.txt"
 
 # Upload it to the proxy droplet
-qvm-run --pass-io "${SECUREDROP_DEV_VM}" "/home/user/bin/upload-report -f ${LOG}.${NOW}"
+qvm-run --pass-io "${SECUREDROP_DEV_VM}" "/home/user/bin/upload-report -f ${LOG}.${NOW}.txt"
