@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-NOW=$(date +%y%m%s%H%M%S)
+NOW=$(date +%y%m%d%H%M%S)
 LOG="/home/user/securedrop-workstation-test.log"
 SECUREDROP_DEV_VM="sd-ssh"
 
@@ -11,3 +11,6 @@ SECUREDROP_DEV_VM="sd-ssh"
 
 # Rename log so the next job doesn't clobber it
 qvm-run --pass-io "${SECUREDROP_DEV_VM}" "mv ${LOG} ${LOG}.${NOW}"
+
+# Upload it to the proxy droplet
+qvm-run --pass-io "${SECUREDROP_DEV_VM}" "/home/user/bin/upload-report -f ${LOG}.${NOW}"

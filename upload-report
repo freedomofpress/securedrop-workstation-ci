@@ -1,0 +1,45 @@
+#!/bin/bash
+
+usage() {
+cat << EOF
+usage: $0 -f [file]
+
+This script uploads a file to the ws ci runner.
+
+The dom0 executes this after running the CI process.
+
+ARGUMENTS:
+  -f   file to upload
+EOF
+}
+
+REPORT_FILE=
+WS_CI_PROXY_USER="wscirunner"
+WS_CI_PROXY="ws-ci-runner.securedrop.org"
+
+# Parse options
+while getopts ":f:h" OPTION
+do
+  case $OPTION in
+    f)
+      REPORT_FILE=$OPTARG
+      ;;
+    h)
+      usage
+      exit
+      ;;
+    ?)
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+if [ -z "${REPORT_FILE}" ]; then
+  usage
+  exit 1
+fi
+
+if [ -f "${REPORT_FILE}" ]; then
+  scp -O "${REPORT_FILE}" "${WS_CI_PROXY_USER}@${WS_CI_PROXY}:/var/www/html/reports/"
+fi
