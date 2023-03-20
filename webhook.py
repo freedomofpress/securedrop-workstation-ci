@@ -1,14 +1,11 @@
 import os
 import subprocess
 import logging
+import shutil
 from flask import Flask
 from github_webhook import Webhook
 
-
 secret = os.environ["SDCI_REPO_WEBHOOK_SECRET"]
-workspace = os.environ["SDCI_REPO_WEBHOOK_WORKSPACE"]
-flag_file = os.environ["SDCI_REPO_WEBHOOK_FLAG_FILE"]
-
 app = Flask(__name__)
 webhook = Webhook(app, secret=secret)
 logging.basicConfig(level=logging.INFO)
@@ -17,14 +14,21 @@ logging.basicConfig(level=logging.INFO)
 @webhook.hook("push")
 def on_push(data):
     ref = data["ref"]
+    repo = data["repository"]["name"]
+    ssh_url = data["repository"]["clone_url"]
     commit = data["after"]
     logging.info(f"running on {ref}")
     # checkout that relevant commit
-    subprocess.check_call(["git", "fetch", "origin", ref], cwd=workspace)
+    workspace = f"{repo}_{commit}"
+    if os.path.exists(workspace):
+        shutil.rmtree(workspace)
+    subprocess.check_call(["git", "clone", ssh_url, workspace])
     subprocess.check_call(["git", "checkout", commit], cwd=workspace)
-    # touch the flag file to trigger dom0's cron/runner to fire
-    with open(f"{workspace}/{flag_file}", "w") as state_file:
-        state_file.write(commit)
+    # Copy the config files we need
+    shutil.copyfile("config.json", f"{workspace}/config.json")
+    shutil.copyfile("sd-journalist.sec", f"{workspace}/sd-journalist.sec")
+    # RPC call to trigger running the build on dom0
+    subprocess.check_call(["qrexec-client-vm", "-e", "dom0", f"qubes.SDCIRunner+{workspace}"])
 
 
 if __name__ == "__main__":

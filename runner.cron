@@ -1,1 +1,0 @@
-* * * * * user flock -w 3600 /var/tmp/runner -c /home/user/runner.py

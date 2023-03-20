@@ -17,8 +17,8 @@ class QubesCI:
         and also initialise our QubesVM objects.
         """
         os.environ["SECUREDROP_DEV_VM"] = "sd-ssh"
-        os.environ["SECUREDROP_PROJECTS_DIR"] = "/home/user/projects/"
-        os.environ["SECUREDROP_REPO_DIR"] = "securedrop-workstation"
+        os.environ["SECUREDROP_PROJECTS_DIR"] = "/var/lib/sdci-repo-webhook/"
+        os.environ["SECUREDROP_REPO_DIR"] = sys.argv[1]
         os.environ["SECUREDROP_DEV_DIR"] = os.environ["SECUREDROP_PROJECTS_DIR"] + os.environ["SECUREDROP_REPO_DIR"]
 
         # Set simpler variables for python use of the above env vars
@@ -39,10 +39,7 @@ class QubesCI:
         self.status = "success"
 
 
-    def setupLog(self):
-        """
-        Set up our logging handler.
-        """
+        # Set up our logging handler.
         now = datetime.now()
         date_name = now.strftime("%Y-%m-%d")
         time_name = now.strftime("%H%M%S%f")
@@ -58,11 +55,7 @@ class QubesCI:
         )
 
     def run_cmd(self, cmd):
-        """
-        Run a command via subprocess, ensuring stdout and stderr
-        get logged to our logging handler. Also set a status
-        flag based on whether the command succeeded or not.
-        """
+
         def log_subprocess_output(pipe):
             for line in pipe:
                 self.logging.info(line.decode('utf-8'))
@@ -89,22 +82,6 @@ class QubesCI:
         return True
 
 
-    def should_we_run(self):
-        """
-        Check if we should run the test (does the state file exist?)
-        If so, also obtain the SHA commit hash from the state file
-        """
-        # Does our state file exist?
-        state_file = f"{self.securedrop_dev_dir}/run-me"
-        try:
-            state_file_exists = self.ssh_vm.run(f"cat {state_file}")
-            self.commit_sha = state_file_exists[0].decode("utf-8")
-            self.ssh_vm.run(f"rm -f {state_file}")
-        except Exception as e:
-            return False
-        return True
-
-
     def build(self):
         """
         Build the package
@@ -118,7 +95,7 @@ class QubesCI:
             shutil.rmtree(self.working_dir)
 
         # Generate our tarball in the appVM and extract it into dom0
-        self.tar_file = f"{self.securedrop_repo_dir}.tar"
+        self.tar_file = f"{self.home_dir}/{self.securedrop_repo_dir}.tar"
         with open(self.tar_file, "w") as tarball:
             subprocess.check_call([
                 "qvm-run",
@@ -155,6 +132,7 @@ class QubesCI:
 
         # Remove final remaining cruft on dom0
         cruft_dirs = [
+            self.working_dir,
             "/usr/share/securedrop",
             "/usr/share/securedrop-workstation-dom0-config"
         ]
@@ -163,6 +141,14 @@ class QubesCI:
                 self.run_cmd(f"sudo rm -rf {cruft}")
         if os.path.exists(self.tar_file):
             os.remove(self.tar_file)
+        # Remove the original working dir on the appVM that was populated by the webhook
+        subprocess.check_call([
+            "qvm-run",
+            self.securedrop_dev_vm,
+            "rm",
+            "-rf",
+            self.securedrop_dev_dir
+        ])
 
     def uploadLog(self):
         """
@@ -171,14 +157,14 @@ class QubesCI:
         subprocess.check_call([
             "qvm-copy-to-vm",
             self.securedrop_dev_vm,
-            self.log_file
+            f"{self.home_dir}/{self.log_file}"
         ])
         subprocess.check_call([
             "qvm-run",
             self.securedrop_dev_vm,
             "/home/user/bin/upload-report",
             "--file",
-            f"{self.home_dir}/{self.log_file}",
+            self.log_file,
             "--status",
             self.status,
             "--sha",
@@ -188,11 +174,7 @@ class QubesCI:
 
 if __name__ == "__main__":
     ci = QubesCI()
-    if ci.should_we_run():
-        ci.setupLog()
-        ci.build()
-        ci.test()
-        ci.teardown()
-        ci.uploadLog()
-    else:
-        sys.exit(0)
+    ci.build()
+    ci.test()
+    ci.teardown()
+    ci.uploadLog()

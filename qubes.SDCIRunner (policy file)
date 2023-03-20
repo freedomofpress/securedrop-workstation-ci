@@ -1,0 +1,2 @@
+sd-ssh dom0 allow
+$anyvm $anyvm deny

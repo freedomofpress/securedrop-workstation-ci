@@ -1,0 +1,5 @@
+#!/bin/bash
+
+CMD="/home/user/runner.py $@"
+
+su user -c "/usr/bin/flock -w 3600 /var/tmp/runner -c '${CMD}'"
