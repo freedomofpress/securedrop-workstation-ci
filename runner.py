@@ -27,6 +27,7 @@ class QubesCI:
         self.securedrop_projects_dir = os.environ["SECUREDROP_PROJECTS_DIR"]
         self.securedrop_repo_dir = os.environ["SECUREDROP_REPO_DIR"]
         self.securedrop_dev_dir = os.environ["SECUREDROP_DEV_DIR"]
+        self.securedrop_dom0_dev_dir = "securedrop-workstation"
         self.home_dir = os.path.expanduser("~")
 
         # Load our QubesVM objects
@@ -34,10 +35,10 @@ class QubesCI:
         self.ssh_vm = self.q.domains[self.securedrop_dev_vm]
         self.usb_vm = self.q.domains[self.securedrop_usb_vm]
 
+        # Parse the sha out of the dir name
+        self.commit_sha = self.securedrop_repo_dir.split("_")[1]
         # Set our assumed status. If any step execution fails, we will change this to false
-        self.commit_sha = ""
         self.status = "success"
-
 
         # Set up our logging handler.
         now = datetime.now()
@@ -89,7 +90,7 @@ class QubesCI:
         os.chdir(self.home_dir)
 
         # Wipe out our existing working dir on dom0
-        self.working_dir = f"{self.home_dir}/{self.securedrop_repo_dir}"
+        self.working_dir = f"{self.home_dir}/{self.securedrop_dom0_dev_dir}"
         if os.path.exists(self.working_dir):
             self.run_cmd(f"sudo chown -R {os.getlogin()} {self.working_dir}")
             shutil.rmtree(self.working_dir)
@@ -104,6 +105,8 @@ class QubesCI:
                 f"tar -c -C {self.securedrop_projects_dir} {self.securedrop_repo_dir}",
             ], stdout = tarball)
             self.run_cmd(f"tar xvf {self.tar_file}")
+            shutil.move(f"{self.home_dir}/{self.securedrop_repo_dir}", self.working_dir)
+
 
 
     def test(self):
