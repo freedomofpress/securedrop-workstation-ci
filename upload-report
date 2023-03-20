@@ -1,45 +1,70 @@
-#!/bin/bash
+#!/usr/bin/env python3
 
-usage() {
-cat << EOF
-usage: $0 -f [file]
+import argparse
+import requests
+from paramiko import SSHClient
+from scp import SCPClient
 
-This script uploads a file to the ws ci runner.
 
-The dom0 executes this after running the CI process.
+def parse_args():
+    """
+    Handle CLI arguments.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+            "--file",
+            required=True,
+            action="store",
+            help="Path to the report file to upload to the proxy",
+    )
+    parser.add_argument(
+            "--status",
+            action="store",
+            required=True,
+            help="Status of the test to send as a Github commit status",
+    )
+    parser.add_argument(
+            "--sha",
+            required=True,
+            action="store",
+            help="SHA commit hash to report the commit status for"
+    )
+    args = parser.parse_args()
+    return args
 
-ARGUMENTS:
-  -f   file to upload
-EOF
-}
 
-REPORT_FILE=
-WS_CI_PROXY_USER="wscirunner"
-WS_CI_PROXY="ws-ci-runner.securedrop.org"
+def upload_report(report):
+    """
+    Uploads the report to the CI runner proxy
+    """
+    ssh_ob = SSHClient()
+    ssh_ob.load_system_host_keys()
+    ssh_ob.connect(hostname="ws-ci-runner.securedrop.org", username="wscirunner")
+    scp = SCPClient(ssh_ob.get_transport())
+    scp.put(f"/home/user/QubesIncoming/dom0/{report}", remote_path="/var/www/html/reports")
+    scp.close()
 
-# Parse options
-while getopts ":f:h" OPTION
-do
-  case $OPTION in
-    f)
-      REPORT_FILE=$OPTARG
-      ;;
-    h)
-      usage
-      exit
-      ;;
-    ?)
-      usage
-      exit 1
-      ;;
-  esac
-done
 
-if [ -z "${REPORT_FILE}" ]; then
-  usage
-  exit 1
-fi
+def report_status(status, sha, report):
+    """
+    Reports a Github commit status
+    """
+    github_token = "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    headers = {
+            "Authorization": f"Bearer {github_token}",
+            "Content-Type": "application/json",
+    }
+    data = {
+        "state": status,
+        "target_url": f"https://ws-ci-runner.securedrop.org/{report}"
+    }
+    r = requests.post(f"https://api.github.com/repos/mig5/securedrop-workstation/statuses/{sha}", json=data, headers=headers)
 
-if [ -f "${REPORT_FILE}" ]; then
-  scp -O "${REPORT_FILE}" "${WS_CI_PROXY_USER}@${WS_CI_PROXY}:/var/www/html/reports/"
-fi
+
+if __name__ == "__main__":
+    # Parse args
+    args = parse_args()
+    # Upload the report to the CI runner proxy
+    upload_report(args.file)
+    # Report Github status check
+    report_status(args.status, args.sha, args.file)
