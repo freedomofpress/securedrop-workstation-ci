@@ -7,7 +7,7 @@ User=user
 WorkingDirectory=/var/lib/sdci-repo-webhook
 Environment=FLASK_APP=webhook.py
 Environment=FLASK_RUN_HOST=100.92.73.40
-Environment=SDCI_REPO_WEBHOOK_SECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+Environment=SDCI_REPO_WEBHOOK_SECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ExecStart=/usr/bin/python3 -m flask run
 Restart=always
 

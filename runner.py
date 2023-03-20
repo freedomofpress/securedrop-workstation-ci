@@ -13,7 +13,7 @@ class QubesCI:
 
     def __init__(self):
         """
-        Set some environment variables and attributes,
+        Set some environment variables and attributes, logging handler
         and also initialise our QubesVM objects.
         """
         os.environ["SECUREDROP_DEV_VM"] = "sd-ssh"
@@ -55,8 +55,16 @@ class QubesCI:
                 ]
         )
 
-    def run_cmd(self, cmd):
 
+    def run_cmd(self, cmd):
+        """
+        Run any command as a subprocess, and ensure both its
+        stdout and stderr get logged to the logging handler.
+        
+        Also detect if the command returned a non-zero returncode,
+        and if so, mark the overall status as a failure so that
+        we report it as such as a git commit status later.
+        """
         def log_subprocess_output(pipe):
             for line in pipe:
                 self.logging.info(line.decode('utf-8'))
@@ -64,23 +72,20 @@ class QubesCI:
         command_line_args = shlex.split(cmd)
         self.logging.info(f"Running: {cmd}")
 
-        try:
-            p = subprocess.Popen(
-                    command_line_args,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-            )
+        p = subprocess.Popen(
+                command_line_args,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+        )
 
-            out, err = p.communicate()
-            out = out.splitlines()
-            log_subprocess_output(out)
-        except (OSError, subprocess.CalledProcessError) as e:
-            self.logging.info(f"Exception occurred: {e}")
+        out, err = p.communicate()
+        out = out.splitlines()
+        log_subprocess_output(out)
+        if p.returncode != 0:
+            self.logging.info(f"Exception occurred during: {cmd}")
             self.status = "failure"
-            return False
         else:
             self.logging.info("Step finished")
-        return True
 
 
     def build(self):
@@ -106,7 +111,6 @@ class QubesCI:
             ], stdout = tarball)
             self.run_cmd(f"tar xvf {self.tar_file}")
             shutil.move(f"{self.home_dir}/{self.securedrop_repo_dir}", self.working_dir)
-
 
 
     def test(self):
@@ -143,19 +147,14 @@ class QubesCI:
             if os.path.exists(cruft):
                 self.run_cmd(f"sudo rm -rf {cruft}")
         if os.path.exists(self.tar_file):
-            os.remove(self.tar_file)
+            self.run_cmd(f"rm -f {self.tar_file}")
         # Remove the original working dir on the appVM that was populated by the webhook
-        subprocess.check_call([
-            "qvm-run",
-            self.securedrop_dev_vm,
-            "rm",
-            "-rf",
-            self.securedrop_dev_dir
-        ])
+        self.run_cmd(f"qvm-run {self.securedrop_dev_vm} rm -rf {self.securedrop_dev_dir}")
+
 
     def uploadLog(self):
         """
-        Copy the log file to the appVM and trigger the upload/status result in Github
+        Copy the log file to the appVM and trigger the upload/commit status in Github.
         """
         subprocess.check_call([
             "qvm-copy-to-vm",

@@ -28,7 +28,7 @@ def on_push(data):
     shutil.copyfile("config.json", f"{workspace}/config.json")
     shutil.copyfile("sd-journalist.sec", f"{workspace}/sd-journalist.sec")
     # RPC call to trigger running the build on dom0
-    subprocess.check_call(["qrexec-client-vm", "dom0", f"qubes.SDCIRunner+{workspace}"])
+    p = subprocess.Popen(["qrexec-client-vm", "dom0", f"qubes.SDCIRunner+{workspace}"])
 
 
 if __name__ == "__main__":
