@@ -27,6 +27,7 @@ class QubesCI:
         self.securedrop_projects_dir = os.environ["SECUREDROP_PROJECTS_DIR"]
         self.securedrop_repo_dir = os.environ["SECUREDROP_REPO_DIR"]
         self.securedrop_dev_dir = os.environ["SECUREDROP_DEV_DIR"]
+        self.home_dir = os.path.expanduser("~")
 
         # Load our QubesVM objects
         self.q = qubesadmin.Qubes()
@@ -51,11 +52,10 @@ class QubesCI:
                 format='%(levelname)s:%(message)s',
                 level=logging.INFO,
                 handlers=[
-                    logging.FileHandler(self.log_file),
+                    logging.FileHandler(f"{self.home_dir}/{self.log_file}"),
                     logging.StreamHandler()
                 ]
         )
-
 
     def run_cmd(self, cmd):
         """
@@ -92,7 +92,7 @@ class QubesCI:
     def should_we_run(self):
         """
         Check if we should run the test (does the state file exist?)
-        If so, also obtain the SHA commit hsah from the state file
+        If so, also obtain the SHA commit hash from the state file
         """
         # Does our state file exist?
         state_file = f"{self.securedrop_dev_dir}/run-me"
@@ -109,11 +109,10 @@ class QubesCI:
         """
         Build the package
         """
-        home_dir = os.path.expanduser("~")
-        os.chdir(home_dir)
+        os.chdir(self.home_dir)
 
         # Wipe out our existing working dir on dom0
-        self.working_dir = f"{home_dir}/{self.securedrop_repo_dir}"
+        self.working_dir = f"{self.home_dir}/{self.securedrop_repo_dir}"
         if os.path.exists(self.working_dir):
             self.run_cmd(f"sudo chown -R {os.getlogin()} {self.working_dir}")
             shutil.rmtree(self.working_dir)
@@ -179,7 +178,7 @@ class QubesCI:
             self.securedrop_dev_vm,
             "/home/user/bin/upload-report",
             "--file",
-            self.log_file,
+            f"{self.home_dir}/{self.log_file}",
             "--status",
             self.status,
             "--sha",
