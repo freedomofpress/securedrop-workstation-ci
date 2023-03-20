@@ -15,14 +15,14 @@ logging.basicConfig(level=logging.INFO)
 def on_push(data):
     ref = data["ref"]
     repo = data["repository"]["name"]
-    ssh_url = data["repository"]["clone_url"]
+    clone_url = data["repository"]["clone_url"]
     commit = data["after"]
     logging.info(f"running on {ref}")
     # checkout that relevant commit
     workspace = f"{repo}_{commit}"
     if os.path.exists(workspace):
         shutil.rmtree(workspace)
-    subprocess.check_call(["git", "clone", ssh_url, workspace])
+    subprocess.check_call(["git", "clone", sclone_url, workspace])
     subprocess.check_call(["git", "checkout", commit], cwd=workspace)
     # Copy the config files we need
     shutil.copyfile("config.json", f"{workspace}/config.json")
