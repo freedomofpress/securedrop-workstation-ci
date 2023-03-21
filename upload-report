@@ -2,6 +2,7 @@
 
 import argparse
 import requests
+# Needed to dnf install the following two, remember to note this in the README when we write it
 from paramiko import SSHClient
 from scp import SCPClient
 
@@ -49,6 +50,7 @@ def report_status(status, sha, report):
     """
     Reports a Github commit status
     """
+    # Currently uses mig5's own PAT, we would want to use sdcibot in prod I imagine
     github_token = "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     headers = {
             "Authorization": f"Bearer {github_token}",

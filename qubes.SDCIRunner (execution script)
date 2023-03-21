@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# This file goes in /etc/qubes-rpc/qubes.SDCIRunner on the dom0
+
 CMD="/home/user/runner.py $@"
 
 su user -c "/usr/bin/flock -w 3600 /var/tmp/runner -c '${CMD}'"
