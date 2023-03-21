@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # This file goes in /etc/qubes-rpc/qubes.SDCIRunner on the dom0
+# It gets executed with qrclient-exec-vm by the webhook.py in sd-ssh
 
 CMD="/home/user/runner.py $@"
 
