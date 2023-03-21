@@ -1,4 +1,4 @@
-# Securedrop Workstation Continuous Integration scripts for QubesOS
+# Securedrop Workstation Continuous Integration scripts
 
 ## About
 
