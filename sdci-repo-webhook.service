@@ -6,7 +6,7 @@ After=network.target
 User=user
 WorkingDirectory=/var/lib/sdci-repo-webhook
 Environment=FLASK_APP=webhook.py
-Environment=FLASK_RUN_HOST=100.92.73.40
+Environment=FLASK_RUN_HOST=100.92.73.40 # This is Mig's sd-ssh tailscale connection
 Environment=SDCI_REPO_WEBHOOK_SECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ExecStart=/usr/bin/python3 -m flask run
 Restart=always

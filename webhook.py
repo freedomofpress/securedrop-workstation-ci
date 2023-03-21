@@ -36,4 +36,4 @@ def on_push(data):
 
 
 if __name__ == "__main__":
-    app.run(host="100.92.73.40", port=5000)
+    app.run(host="100.92.73.40", port=5000) # This IP is Mig's sd-ssh tailscale connection.. I actually think FLASK_RUN_HOST env var in systemd supersedes this anyway and is required
