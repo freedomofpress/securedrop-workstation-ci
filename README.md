@@ -14,9 +14,9 @@ This document tries to help FPF/SD engineers install the scripts on a Qubes 4.1+
 
 2. Put the file `runner.py` in `/home/user/`.
 
-3. Put the file `qubes.SDCIRunner`in `/etc/qubes-rpc/`.
+3. Put the file `qubes.SDCIRunner` in `/etc/qubes-rpc/`.
 
-4. Put the file `qubes.SDCIRunner.policy as `/etc/qubes-rpc/policy/`.
+4. Put the file `qubes.SDCIRunner.policy` as `/etc/qubes-rpc/policy/qubes.SDCIRunner`.
 
 
 ## Instructions for sd-ssh
