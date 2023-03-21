@@ -55,8 +55,8 @@ The runner.py will tarball up the codebase from sd-ssh and proceed with the `mak
 
 Then, the dom0 will leverage the securedrop-workstation's `scripts/sdw-admin.py --uninstall --force` to tear everything down, along with cleaning up some remaining cruft.
 
-If any of the steps fail, there will be a 'status' value of 'success' or 'failure'.
+The runner.py will detect if any of the commands succeed or fail but it should not abort on failure (so that the teardown still completes).
 
-At the end of the process, the dom0 will copy its log file to the sd-ssh machine and then call `upload-file` via `qvm-run` on that machine. 
+At the end of the process, the dom0 will copy its log file to the sd-ssh machine and then call `upload-file` via `qvm-run` on that machine, with a 'status' indicating whether the build succeeded or failed.
 
-That script will upload the log to the ws-ci-runner proxy for viewing in a browser, and will also post a commit status to Github, with the `target_url` pointing to the HTTPS URL of that log file on the ws-ci-runner.
+That script will upload the log to the ws-ci-runner proxy for viewing in a browser, and will also post a commit status to Github, with the `target_url` pointing to the HTTPS URL of that log file on the ws-ci-runner, and with the status of the build.
