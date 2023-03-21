@@ -25,7 +25,7 @@ This document tries to help FPF/SD engineers install the scripts on a Qubes 4.1+
 
 2. Put the file webhook.py in `/var/lib/sdci-ci-runner`
 
-3. Put a `config.json` and `sd-journalist.sec` (prepared earlier as part of installation instructions) in `/var/lib/sdci-ci-runner`
+3. Put a `config.json` and `sd-journalist.sec` (prepared earlier as part of installation instructions) in `/var/lib/sdci-ci-runner`. At this point, `sudo chown -R user.user /var/lib/sdci-ci-runner`
 
 4. Put `upload-file` in `/home/user/bin`. Generate a PAT with `repo:` access and ensure that PAT is in `upload-file` so that this file can post git commit statuses.
 
