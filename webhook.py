@@ -6,6 +6,9 @@ from flask import Flask
 from github_webhook import Webhook
 
 secret = os.environ["SDCI_REPO_WEBHOOK_SECRET"]
+listen_ip = os.environ["FLASK_RUN_HOST"]
+listen_port = 5000
+
 app = Flask(__name__)
 webhook = Webhook(app, secret=secret)
 logging.basicConfig(level=logging.INFO)
@@ -36,4 +39,4 @@ def on_push(data):
 
 
 if __name__ == "__main__":
-    app.run(host="100.92.73.40", port=5000) # This IP is Mig's sd-ssh tailscale connection.. I actually think FLASK_RUN_HOST env var in systemd supersedes this anyway and is required
+    app.run(host=listen_ip, port=listen_port)
