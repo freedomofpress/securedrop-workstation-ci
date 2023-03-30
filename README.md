@@ -48,7 +48,7 @@ Try and push a commit and see if the webhook works!
 
 ### What should happen, if it works
 
-1. The webhook should obtain info about the commit/repo and clone the repo into `/var/lib/sdci-repo-webhook/securedrop-workstation_{SHA}` on the sd-ssh VM.
+1. The webhook should obtain info about the commit/repo and clone the repo into `/var/lib/sdci-ci-runner/securedrop-workstation_{SHA}` on the sd-ssh VM.
 
 2. It will then trigger an RPC call to dom0 to run the `runner.py` (wrapped in flock to avoid concurrent builds).
 

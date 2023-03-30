@@ -17,7 +17,7 @@ class QubesCI:
         and also initialise our QubesVM objects.
         """
         os.environ["SECUREDROP_DEV_VM"] = "sd-ssh"
-        os.environ["SECUREDROP_PROJECTS_DIR"] = "/var/lib/sdci-repo-webhook/"
+        os.environ["SECUREDROP_PROJECTS_DIR"] = "/var/lib/sdci-ci-runner/"
         os.environ["SECUREDROP_REPO_DIR"] = sys.argv[1]
         os.environ["SECUREDROP_DEV_DIR"] = os.environ["SECUREDROP_PROJECTS_DIR"] + os.environ["SECUREDROP_REPO_DIR"]
 
