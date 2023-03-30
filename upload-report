@@ -70,5 +70,3 @@ if __name__ == "__main__":
     upload_report(args.file)
     # Report Github status check
     report_status(args.status, args.sha, args.file)
-
-

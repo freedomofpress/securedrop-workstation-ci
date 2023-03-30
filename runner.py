@@ -7,6 +7,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import getpass
 from datetime import datetime
 
 class QubesCI:
@@ -28,7 +29,10 @@ class QubesCI:
         self.securedrop_repo_dir = os.environ["SECUREDROP_REPO_DIR"]
         self.securedrop_dev_dir = os.environ["SECUREDROP_DEV_DIR"]
         self.securedrop_dom0_dev_dir = "securedrop-workstation"
-        self.home_dir = os.path.expanduser("~")
+        # Running under su, the `os` functions can be wonky, so use getpass to try environment
+        # variables and make some assumptions about Qubes home dir locations
+        self.username = getpass.getuser()
+        self.home_dir = f"/home/{self.username}"
 
         # Load our QubesVM objects
         self.q = qubesadmin.Qubes()
@@ -97,7 +101,7 @@ class QubesCI:
         # Wipe out our existing working dir on dom0
         self.working_dir = f"{self.home_dir}/{self.securedrop_dom0_dev_dir}"
         if os.path.exists(self.working_dir):
-            self.run_cmd(f"sudo chown -R {os.getlogin()} {self.working_dir}")
+            self.run_cmd(f"sudo chown -R {self.username} {self.working_dir}")
             shutil.rmtree(self.working_dir)
 
         # Generate our tarball in the appVM and extract it into dom0
