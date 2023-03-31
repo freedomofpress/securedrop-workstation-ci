@@ -2,7 +2,7 @@
 
 import argparse
 import requests
-# Needed to dnf install the following two, remember to note this in the README when we write it
+from ansi2html import Ansi2HTMLConverter
 from paramiko import SSHClient
 from scp import SCPClient
 
@@ -38,11 +38,21 @@ def upload_report(report):
     """
     Uploads the report to the CI runner proxy
     """
+    # First, make a .html copy of our .txt report with the
+    # ANSI colors converted to span styles
+    conv = Ansi2HTMLConverter()
+    report_file_html = report.replace(".txt", ".html")
+    report_path = "/home/user/QubesIncoming/dom0"
+    with open(f"{report_path}/{report}", "r") as report_txt:
+        with open(f"{report_path}/{report_file_html}", "w") as report_html:
+            report_html.write(conv.convert("".join(report_txt.readlines())))
+
+    # Upload the HTML report to the proxy
     ssh_ob = SSHClient()
     ssh_ob.load_system_host_keys()
     ssh_ob.connect(hostname="ws-ci-runner.securedrop.org", username="wscirunner")
     scp = SCPClient(ssh_ob.get_transport())
-    scp.put(f"/home/user/QubesIncoming/dom0/{report}", remote_path="/var/www/html/reports")
+    scp.put(f"{report_path}/{report_file_html}", remote_path="/var/www/html/reports")
     scp.close()
 
 
@@ -50,15 +60,27 @@ def report_status(status, sha, report):
     """
     Reports a Github commit status
     """
+    if status == "error":
+        description = "There was a problem during the teardown process"
+    elif status == "failure":
+        description = "There was a problem during the build or test process"
+    elif status == "success":
+        description = "The build succeeded"
+    else:
+        raise SystemError(f"Unrecognized status: {status}")
+
     # Currently uses mig5's own PAT, we would want to use sdcibot in prod I imagine
     github_token = "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     headers = {
             "Authorization": f"Bearer {github_token}",
             "Content-Type": "application/json",
     }
+    # We are pointing to our HTML copy of the report
+    report = report.replace(".txt", ".html")
     data = {
         "state": status,
-        "target_url": f"https://ws-ci-runner.securedrop.org/{report}"
+        "target_url": f"https://ws-ci-runner.securedrop.org/{report}",
+        "description": description
     }
     r = requests.post(f"https://api.github.com/repos/mig5/securedrop-workstation/statuses/{sha}", json=data, headers=headers)
 

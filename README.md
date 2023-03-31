@@ -31,7 +31,7 @@ This document tries to help FPF/SD engineers install the scripts on a Qubes 4.1+
 
 5. Put `sdci-repo-webhook.service` in `/etc/systemd/system/`. Configure a webhook 'secret' in this systemd file. Also adjust the `FLASK_RUN_HOST` to the IP of your sd-ssh machine's Tailscale IP.
 
-6. Install some dependencies: `sudo dnf install python3-pip python3-flask python3-paramiko python3-scp; sudo pip3 install github-webhook`
+6. Install some dependencies: `sudo dnf install python3-pip python3-flask python3-paramiko python3-scp python3-ansi2html; sudo pip3 install github-webhook`
 
 7. Enable and start the flask service via systemd: `systemctl daemon-reload; systemctl enable sdci-repo-webhook; systemctl start sdci-repo-webhook`
 
