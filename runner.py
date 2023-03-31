@@ -59,8 +59,16 @@ class QubesCI:
                 ]
         )
 
+        self.dirty_file = "/var/tmp/sd-ci-runner.dirty"
+        # Is our environment 'dirty' (bad teardown during last build?)
+        if os.path.exists(self.dirty_file):
+            message = "Can't proceed with build: environment is dirty"
+            self.logging.info(message)
+            self.status = "error"
+            self.uploadLog()
+            raise SystemError(message)
 
-    def run_cmd(self, cmd):
+    def run_cmd(self, cmd, teardown=False):
         """
         Run any command as a subprocess, and ensure both its
         stdout and stderr get logged to the logging handler.
@@ -69,12 +77,21 @@ class QubesCI:
         and if so, mark the overall status as a failure so that
         we report it as such as a git commit status later.
         """
+        def format_current_timestamp():
+            now = datetime.now()
+            date_name = now.strftime("%Y-%m-%d")
+            time_name = now.strftime("%H:%M:%S:%f")
+            timestamp = f"{date_name}-{time_name}"
+            return timestamp
+
         def log_subprocess_output(pipe):
             for line in pipe:
-                self.logging.info(line.decode('utf-8'))
+                timestamp = format_current_timestamp()
+                self.logging.info(f"[{timestamp}] {line.decode('utf-8')}")
 
         command_line_args = shlex.split(cmd)
-        self.logging.info(f"Running: {cmd}")
+        timestamp = format_current_timestamp()
+        self.logging.info(f"[{timestamp}] Running: {cmd}")
 
         p = subprocess.Popen(
                 command_line_args,
@@ -85,11 +102,18 @@ class QubesCI:
         out, err = p.communicate()
         out = out.splitlines()
         log_subprocess_output(out)
+        timestamp = format_current_timestamp()
         if p.returncode != 0:
-            self.logging.info(f"Exception occurred during: {cmd}")
-            self.status = "failure"
+            self.logging.info(f"[{timestamp}] Exception occurred during: {cmd}")
+            if teardown:
+                self.status = "error"
+                # Mark the environment as 'dirty' - it may need manual cleaning up
+                # to avoid skewing results on the next build
+                open(self.dirty_file, "w").close()
+            else:
+                self.status = "failure"
         else:
-            self.logging.info("Step finished")
+            self.logging.info(f"[{timestamp}] Step finished")
 
 
     def build(self):
@@ -133,13 +157,13 @@ class QubesCI:
         """
         if self.usb_vm.is_running():
             self.usb_vm.kill()
-        self.run_cmd(f"qvm-remove -f {self.securedrop_usb_vm}")
+        self.run_cmd(f"qvm-remove -f {self.securedrop_usb_vm}", teardown=True)
 
         # Rebuild the sys-usb with Salt
-        self.run_cmd("sudo qubesctl state.sls qvm.sys-usb")
+        self.run_cmd("sudo qubesctl state.sls qvm.sys-usb", teardown=True)
 
         # Uninstall all the other VMs
-        self.run_cmd(f"{self.working_dir}/scripts/sdw-admin.py --uninstall --force")
+        self.run_cmd(f"{self.working_dir}/scripts/sdw-admin.py --uninstall --force", teardown=True)
 
         # Remove final remaining cruft on dom0
         cruft_dirs = [
@@ -149,11 +173,11 @@ class QubesCI:
         ]
         for cruft in cruft_dirs:
             if os.path.exists(cruft):
-                self.run_cmd(f"sudo rm -rf {cruft}")
+                self.run_cmd(f"sudo rm -rf {cruft}", teardown=True)
         if os.path.exists(self.tar_file):
-            self.run_cmd(f"rm -f {self.tar_file}")
+            self.run_cmd(f"rm -f {self.tar_file}", teardown=True)
         # Remove the original working dir on the appVM that was populated by the webhook
-        self.run_cmd(f"qvm-run {self.securedrop_dev_vm} rm -rf {self.securedrop_dev_dir}")
+        self.run_cmd(f"qvm-run {self.securedrop_dev_vm} rm -rf {self.securedrop_dev_dir}", teardown=True)
 
 
     def uploadLog(self):
