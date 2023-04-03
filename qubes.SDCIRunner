@@ -4,5 +4,7 @@
 # It gets executed with qrclient-exec-vm by the webhook.py in sd-ssh
 
 dom0_user=user
-
-su "$dom0_user" -c "/usr/bin/flock -w 3600 /var/tmp/runner -c '/home/${dom0_user}/runner.py \"$@\"'"
+working_dir="/var/tmp/sd-ci-runner"
+queue_dir="${working_dir}/commits"
+commit="$1"
+su "$dom0_user" -c "touch ${queue_dir}/${commit}"

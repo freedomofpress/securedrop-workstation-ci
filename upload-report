@@ -14,7 +14,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
             "--file",
-            required=True,
+            default="",
             action="store",
             help="Path to the report file to upload to the proxy",
     )
@@ -56,7 +56,7 @@ def upload_report(report):
     scp.close()
 
 
-def report_status(status, sha, report):
+def report_status(status, sha, report=""):
     """
     Reports a Github commit status
     """
@@ -66,6 +66,13 @@ def report_status(status, sha, report):
         description = "There was a problem during the build or test process"
     elif status == "success":
         description = "The build succeeded"
+    elif status == "pending":
+        description = "The build is queued"
+    elif status == "running":
+        # For Github, the status still has to be 'pending', but we differentiate
+        # the description based on whether it is queued or running.
+        status = "pending"
+        description = "The build is running"
     else:
         raise SystemError(f"Unrecognized status: {status}")
 
@@ -75,13 +82,15 @@ def report_status(status, sha, report):
             "Authorization": f"Bearer {github_token}",
             "Content-Type": "application/json",
     }
-    # We are pointing to our HTML copy of the report
-    report = report.replace(".txt", ".html")
     data = {
         "state": status,
-        "target_url": f"https://ws-ci-runner.securedrop.org/{report}",
         "description": description
     }
+    # We are pointing to our HTML copy of the report
+    if report != "":
+        report = report.replace(".txt", ".html")
+        data["target_url"] = f"https://ws-ci-runner.securedrop.org/{report}"
+
     r = requests.post(f"https://api.github.com/repos/mig5/securedrop-workstation/statuses/{sha}", json=data, headers=headers)
 
 
@@ -89,6 +98,7 @@ if __name__ == "__main__":
     # Parse args
     args = parse_args()
     # Upload the report to the CI runner proxy
-    upload_report(args.file)
+    if args.file != "":
+        upload_report(args.file)
     # Report Github status check
     report_status(args.status, args.sha, args.file)

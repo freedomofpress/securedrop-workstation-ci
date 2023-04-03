@@ -1,7 +1,8 @@
-import os
-import subprocess
 import logging
+import os
+import requests
 import shutil
+import subprocess
 from flask import Flask
 from github_webhook import Webhook
 
@@ -12,7 +13,6 @@ listen_port = 5000
 app = Flask(__name__)
 webhook = Webhook(app, secret=secret)
 logging.basicConfig(level=logging.INFO)
-
 
 @webhook.hook("push")
 def on_push(data):
@@ -30,12 +30,22 @@ def on_push(data):
     # Copy the config files we need
     shutil.copyfile("config.json", f"{workspace}/config.json")
     shutil.copyfile("sd-journalist.sec", f"{workspace}/sd-journalist.sec")
+
+    # Post pending status back to Github
+    subprocess.check_call([
+        "/home/user/bin/upload-report",
+        "--status",
+        "pending",
+        "--sha",
+        commit
+    ])
+
     # RPC call to trigger running the build on dom0
     # Note: I don't call p.communicate() (or use check_call()/check_output() instead of Pppen)
     # because it otherwise waits for the dom0 runner.py to finish, which takes a long time, and
     # that would cause Github to report that the webhook POST 'timed out' with an error. That
     # doesn't stop anything from working but it looks ugly to have an error in the Webhook deliveries
-    p = subprocess.Popen(["qrexec-client-vm", "dom0", f"qubes.SDCIRunner+{workspace}"])
+    p = subprocess.Popen(["qrexec-client-vm", "dom0", f"qubes.SDCIRunner+{commit}"])
 
 
 if __name__ == "__main__":

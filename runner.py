@@ -2,24 +2,26 @@
 
 import logging
 import os
+import pyinotify
 import qubesadmin
 import shlex
 import shutil
 import subprocess
 import sys
+import time
 import getpass
 from datetime import datetime
 
 class QubesCI:
 
-    def __init__(self):
+    def __init__(self, commit):
         """
         Set some environment variables and attributes, logging handler
         and also initialise our QubesVM objects.
         """
-        os.environ["SECUREDROP_DEV_VM"] = "sd-ssh"
+        self.commit_sha = commit
         os.environ["SECUREDROP_PROJECTS_DIR"] = "/var/lib/sdci-ci-runner/"
-        os.environ["SECUREDROP_REPO_DIR"] = sys.argv[1]
+        os.environ["SECUREDROP_REPO_DIR"] = f"securedrop-workstation_{commit}"
         os.environ["SECUREDROP_DEV_DIR"] = os.environ["SECUREDROP_PROJECTS_DIR"] + os.environ["SECUREDROP_REPO_DIR"]
 
         # Set simpler variables for python use of the above env vars
@@ -39,8 +41,6 @@ class QubesCI:
         self.ssh_vm = self.q.domains[self.securedrop_dev_vm]
         self.usb_vm = self.q.domains[self.securedrop_usb_vm]
 
-        # Parse the sha out of the dir name
-        self.commit_sha = self.securedrop_repo_dir.split("_")[1]
         # Set our assumed status. If any step execution fails, we will change this to false
         self.status = "success"
 
@@ -59,7 +59,7 @@ class QubesCI:
                 ]
         )
 
-        self.dirty_file = "/var/tmp/sd-ci-runner.dirty"
+        self.dirty_file = "/var/tmp/sd-ci-runner/dirty"
         # Is our environment 'dirty' (bad teardown during last build?)
         if os.path.exists(self.dirty_file):
             message = "Can't proceed with build: environment is dirty"
@@ -67,6 +67,19 @@ class QubesCI:
             self.status = "error"
             self.uploadLog()
             raise SystemError(message)
+        else:
+            # Report to Github that the build has transitioned
+            # from queued state to running
+            subprocess.check_call([
+                "qvm-run",
+                self.securedrop_dev_vm,
+                "/home/user/bin/upload-report",
+                "--status",
+                "running",
+                "--sha",
+                self.commit_sha
+            ])
+
 
     def run_cmd(self, cmd, teardown=False):
         """
@@ -202,9 +215,99 @@ class QubesCI:
         ])
 
 
+class EventHandler(pyinotify.ProcessEvent):
+    """
+    Extends the pyinotify.ProcessEvent class to react to when
+    a commit file is added by the sd-ssh VM. This is our cue to
+    start the build process, or wait if one is already in
+    progress. We can also 'cancel' a build by deleting its commit
+    file, which inotify also detects the event for.
+    """
+    def __init__(self, lock, *args, **kwargs):
+        """
+        Extend the ProcessEvent class and set our custom attributes.
+        """
+        super(EventHandler, self).__init__(*args, **kwargs)
+
+        self.lock = lock
+        self.builds = []
+
+
+    def kickOff(self, event):
+        """
+        Kick off the build if the lock is not in use and the item
+        is still in the builds list.
+        """
+        while True:
+            if not os.path.exists(self.lock) and event.pathname in self.builds:
+                # Create the lock file
+                f = open(self.lock, "w").close()
+
+                # Try to run the CI
+                ci = QubesCI(event.name)
+                ci.build()
+                ci.test()
+                ci.teardown()
+                ci.uploadLog()
+
+                # Remove lock file
+                os.remove(self.lock)
+                # Remove commit file - this also triggers IN_DELETE
+                os.remove(event.pathname)
+                break
+            else:
+                if event.pathname not in self.builds:
+                    # Commit has perhaps been removed perhaps via IN_DELETE
+                    break
+                # A build is already in process. Sleep and try again
+                time.sleep(30)
+                # Retry
+                self.kickOff(event)
+
+
+    def process_IN_CREATE(self, event):
+        """
+        React to the IN_CREATE inotify event, kicking off a new build
+        if one is not already in progress.
+        """
+        self.builds.append(event.pathname)
+        print(event.pathname)
+        self.kickOff(event)
+
+
+    def process_IN_DELETE(self, event):
+        """
+        The commit has been deleted from the pending area. Remove it
+        from the list, which can also imply cancelling it from running
+        later.
+        """
+        self.builds[:] = [b for b in self.builds if b != event.pathname]
+        subprocess.check_call([
+            "qvm-run",
+            os.environ["SECUREDROP_DEV_VM"],
+            "/home/user/bin/upload-report",
+            "--status",
+            "failure",
+            "--sha",
+            event.name
+        ])
+
 if __name__ == "__main__":
-    ci = QubesCI()
-    ci.build()
-    ci.test()
-    ci.teardown()
-    ci.uploadLog()
+    # Set up our inotify event handler. It will watch for new 'commit' files
+    # and run the QubesCI process for each commit it finds.
+    try:
+        os.environ["SECUREDROP_DEV_VM"] = "sd-ssh"
+        lockdir = "/var/tmp/sd-ci-runner"
+        lock = f"{lockdir}/lock"
+        wm = pyinotify.WatchManager()
+        mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE
+        handler = EventHandler(lock)
+        notifier = pyinotify.Notifier(wm, handler)
+        watch = wm.add_watch(f"{lockdir}/commits", mask)
+        print(f"Watching {lockdir}/commits")
+        notifier.loop()
+    except Exception as e:
+        print(e)
+        # If something unexpected happens, ensure we clean up the lock file
+        if os.path.exists(lock):
+            os.remove(lock)
