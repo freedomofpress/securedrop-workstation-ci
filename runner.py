@@ -3,6 +3,7 @@
 import logging
 import os
 import qubesadmin
+import re
 import shlex
 import shutil
 import subprocess
@@ -85,9 +86,11 @@ class QubesCI:
             return timestamp
 
         def log_subprocess_output(pipe):
+            ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
             for line in pipe:
                 timestamp = format_current_timestamp()
-                self.logging.info(f"[{timestamp}] {line.decode('utf-8')}")
+                line_decoded = ansi_escape.sub('', line.decode('utf-8'))
+                self.logging.info(f"[{timestamp}] {line_decoded}")
 
         command_line_args = shlex.split(cmd)
         timestamp = format_current_timestamp()
