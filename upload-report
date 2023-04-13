@@ -50,7 +50,7 @@ def upload_report(report):
     # Upload the HTML report to the proxy
     ssh_ob = SSHClient()
     ssh_ob.load_system_host_keys()
-    ssh_ob.connect(hostname="ws-ci-runner.securedrop.org", username="wscirunner")
+    ssh_ob.connect(hostname="ws-ci-runner.securedrop.org", username="wscirunner", key_filename="/home/user/.ssh/id_ed25519_sdci_upload")
     scp = SCPClient(ssh_ob.get_transport())
     scp.put(f"{report_path}/{report_file_html}", remote_path="/var/www/html/reports")
     scp.close()

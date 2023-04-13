@@ -39,7 +39,7 @@ This document tries to help FPF/SD engineers install the scripts on a Qubes 4.1+
 
 9. Configure the webhook in your repository for the 'push' event, with the same secret you put in the systemd file in step 5. The URL would be https://ws-ci-runner.securedrop.org/hook/postreceive per https://github.com/freedomofpress/infrastructure/pull/4111 . You will also need to have an Nginx proxy somewhere answering for the 'outer' HTTPS request, and proxying through to your sd-ssh machine's port 5000 Flask app (via Tailscale)
 
-10. Generate an SSH key on sd-ssh, and ensure this key is in the `/home/wscirunner/.ssh/authorized_keys` on the ws-ci-runner droplet proxy (so that `upload-file` can scp up the log results). You may need to ssh to the ws-ci-runner the first time to accept the host key signature
+10. Generate an SSH key on sd-ssh with `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_sdci_upload`, and ensure this key is in the `/home/wscirunner/.ssh/authorized_keys` on the ws-ci-runner droplet proxy (so that `upload-file` can scp up the log results). Run `ssh -i ~/.ssh/id_ed25519_sdci_upload wscirunner@ws-ci-runner.securedrop.org` once to accept the host key signature.
 
 
 ## Test it
