@@ -2,7 +2,6 @@
 
 import argparse
 import requests
-from ansi2html import Ansi2HTMLConverter
 from paramiko import SSHClient
 from scp import SCPClient
 
@@ -38,21 +37,11 @@ def upload_report(report):
     """
     Uploads the report to the CI runner proxy
     """
-    # First, make a .html copy of our .txt report with the
-    # ANSI colors converted to span styles
-    conv = Ansi2HTMLConverter()
-    report_file_html = report.replace(".txt", ".html")
-    report_path = "/home/user/QubesIncoming/dom0"
-    with open(f"{report_path}/{report}", "r") as report_txt:
-        with open(f"{report_path}/{report_file_html}", "w") as report_html:
-            report_html.write(conv.convert("".join(report_txt.readlines())))
-
-    # Upload the HTML report to the proxy
     ssh_ob = SSHClient()
     ssh_ob.load_system_host_keys()
     ssh_ob.connect(hostname="ws-ci-runner.securedrop.org", username="wscirunner")
     scp = SCPClient(ssh_ob.get_transport())
-    scp.put(f"{report_path}/{report_file_html}", remote_path="/var/www/html/reports")
+    scp.put(f"/home/user/QubesIncoming/dom0/{report}", remote_path="/var/www/html/reports")
     scp.close()
 
 
@@ -75,8 +64,6 @@ def report_status(status, sha, report):
             "Authorization": f"Bearer {github_token}",
             "Content-Type": "application/json",
     }
-    # We are pointing to our HTML copy of the report
-    report = report.replace(".txt", ".html")
     data = {
         "state": status,
         "target_url": f"https://ws-ci-runner.securedrop.org/{report}",
