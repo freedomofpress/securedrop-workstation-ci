@@ -14,9 +14,9 @@ This document tries to help FPF/SD engineers install the scripts on a Qubes 4.1+
 
 2. Put the file `runner.py` in `/home/user/`.
 
-3. Put the file `qubes.SDCIRunner` in `/etc/qubes-rpc/`.
+3. Put the files `qubes.SDCIRunner` and `qubes.SDCICanceler` in `/etc/qubes-rpc/`. Ensure they are executable.
 
-4. Put the file `qubes.SDCIRunner.policy` as `/etc/qubes-rpc/policy/qubes.SDCIRunner`.
+4. Put the files `qubes.SDCIRunner.policy` and `qubes.SDCICanceler.policy as `/etc/qubes-rpc/policy/qubes.SDCIRunner` and `/etc/qubes-rpc/policy/qubes.SDCICanceler`.
 
 
 ## Instructions for sd-ssh
@@ -27,7 +27,7 @@ This document tries to help FPF/SD engineers install the scripts on a Qubes 4.1+
 
 3. Put a `config.json` and `sd-journalist.sec` (prepared earlier as part of installation instructions) in `/var/lib/sdci-ci-runner`. At this point, `sudo chown -R user.user /var/lib/sdci-ci-runner`
 
-4. Put `upload-file` in `/home/user/bin`. Generate a PAT in Github with full `repo:` access and ensure that that PAT is in `upload-file`, so that the script can post git commit statuses back to Github.
+4. Put `upload-file` and `cancel.py` in `/home/user/bin`. Generate a PAT in Github with full `repo:` access and ensure that that PAT is in `upload-file`, so that the script can post git commit statuses back to Github.
 
 5. Put `sdci-repo-webhook.service` in `/etc/systemd/system/`. Configure a webhook 'secret' in this systemd file. Also adjust the `FLASK_RUN_HOST` to the IP of your sd-ssh machine's Tailscale IP.
 
@@ -46,18 +46,40 @@ This document tries to help FPF/SD engineers install the scripts on a Qubes 4.1+
 
 Try and push a commit and see if the webhook works!
 
-### What should happen, if it works
 
-1. The webhook should obtain info about the commit/repo and clone the repo into `/var/lib/sdci-ci-runner/securedrop-workstation_{SHA}` on the sd-ssh VM.
+## How it works
+
+1. When the webhook delivers the payload to the endpoint, the webhook obtains info about the commit/repo and clones the repo into `/var/lib/sdci-ci-runner/securedrop-workstation_{SHA}` on the sd-ssh VM.
 
 2. It will then trigger an RPC call to dom0 to run the `runner.py` (wrapped in flock to avoid concurrent builds).
 
-3. The runner.py will tarball up the codebase from sd-ssh and proceed with the `make clone; make dev; make test` sequence, logging to a log file the whole time.
+3. The runner.py reports a commit status back to Github that the build has started.
 
-4. Then, the dom0 will leverage the securedrop-workstation's `scripts/sdw-admin.py --uninstall --force` to tear everything down, along with cleaning up some remaining cruft.
+4. The runner.py tarballs up the codebase from sd-ssh and proceeds with the `make clone; make dev; make test` sequence, logging to a log file the whole time.
+
+5. The runner.py then leverages the securedrop-workstation's `scripts/sdw-admin.py --uninstall --force` to tear everything down, along with cleaning up some remaining cruft.
 
 The runner.py will detect if any of the commands succeed or fail but it should not abort on failure (so that the teardown still completes).
 
-5. At the end of the process, the dom0 will copy its log file to the sd-ssh machine and then call `upload-file` via `qvm-run` on that machine, with a 'status' indicating whether the build succeeded or failed.
+6. At the end of the process, the dom0 will copy its log file to the sd-ssh machine and then call `upload-file` via `qvm-run` on that machine with the status of the build.
 
-That script will upload the log to the ws-ci-runner proxy for viewing in a browser, and will also post a commit status to Github, with the `target_url` pointing to the HTTPS URL of that log file on the ws-ci-runner, and with the status of the build.
+That script will upload the log to the ws-ci-runner proxy for viewing in a browser at https://ws-ci-runner.securedrop.org, and will also post a commit status to Github, with the `target_url` pointing to the HTTPS URL of that log file on the ws-ci-runner, and with the status of the build.
+
+
+## Queuing and canceling builds
+
+The webhook can handle multiple commits delivered to it. The jobs get issued to the dom0 with a maximum `flock` wait of 86400s (24h).
+
+If another job is already running, it means the lock is held, so the other jobs wait for the lock to be released before starting.
+
+Once the lock releases, one of the pending jobs will claim the lock and start running.
+
+While a job is waiting, the commit in Github has a status of 'pending' with the message 'The build is queued'.
+
+When a build starts, the commit status changes to a description of 'The build is running'. The commit status state is technically still 'pending' because Github makes no distinction between 'queued' and 'running', except in the description field of the commit status.
+
+If you need to cancel a build that is queued, run `cancel.py --sha xxxxxxxx` on the sd-ssh VM. This will:
+
+ * remove the codebase that was checked out to this commit on sd-ssh
+ * kill the pending process on the dom0 (by way of the qubes.SDCICanceler RPC script)
+ * update the git commit status at Github to say that this build was canceled by an administrator. The commit status will now be of state 'error' with a red cross.
