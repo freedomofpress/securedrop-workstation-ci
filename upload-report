@@ -13,7 +13,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
             "--file",
-            required=True,
+            default = "",
             action="store",
             help="Path to the report file to upload to the proxy",
     )
@@ -55,6 +55,12 @@ def report_status(status, sha, report):
         description = "There was a problem during the build or test process"
     elif status == "success":
         description = "The build succeeded"
+    elif status == "pending":
+        description = "The build is queued"
+    elif status == "running":
+        description = "The build is running"
+    elif status == "canceled":
+        description = "The build was canceled by an administrator"
     else:
         raise SystemError(f"Unrecognized status: {status}")
 
@@ -64,18 +70,28 @@ def report_status(status, sha, report):
             "Authorization": f"Bearer {github_token}",
             "Content-Type": "application/json",
     }
-    data = {
-        "state": status,
-        "target_url": f"https://ws-ci-runner.securedrop.org/{report}",
-        "description": description
-    }
+    data = {}
+    data["description"] = description
+    if status in ["error", "failure", "success"]:
+        data["target_url"] = f"https://ws-ci-runner.securedrop.org/{report}"
+
+    # Github expects state 'error', 'failure', 'success' or 'pending'.
+    # Override our non-standard statuses to the closest match to make the
+    # API call work.
+    if status == "canceled":
+        status = "error"
+    if status == "running":
+        status = "pending"
+    data["state"] = status
+
     r = requests.post(f"https://api.github.com/repos/mig5/securedrop-workstation/statuses/{sha}", json=data, headers=headers)
 
 
 if __name__ == "__main__":
     # Parse args
     args = parse_args()
-    # Upload the report to the CI runner proxy
-    upload_report(args.file)
+    if args.status in ["error", "failure", "success"]:
+        # Upload the report to the CI runner proxy
+        upload_report(args.file)
     # Report Github status check
     report_status(args.status, args.sha, args.file)
