@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# This file goes in /etc/qubes-rpc/qubes.SDCICanceler on the dom0
+
+COMMIT=$1
+PID=$(pgrep -U 1000 -f "${COMMIT}")
+
+if [ ! -z "${PID}" ]; then
+  kill "${PID}"
+fi

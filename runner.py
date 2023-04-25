@@ -60,6 +60,17 @@ class QubesCI:
                 ]
         )
 
+        # Report to Github that the build has started running
+        subprocess.check_call([
+            "qvm-run",
+            self.securedrop_dev_vm,
+            "/home/user/bin/upload-report",
+            "--status",
+            "running",
+            "--sha",
+            self.commit_sha
+        ])
+
         self.dirty_file = "/var/tmp/sd-ci-runner.dirty"
         # Is our environment 'dirty' (bad teardown during last build?)
         if os.path.exists(self.dirty_file):
