@@ -5,4 +5,4 @@
 
 dom0_user=user
 
-su "$dom0_user" -c "/usr/bin/flock -w 3600 /var/tmp/runner -c '/home/${dom0_user}/runner.py \"$@\"'"
+su "$dom0_user" -c "/usr/bin/flock -w 86400 /var/tmp/sd-ci-runner.lock -c '/home/${dom0_user}/runner.py \"$@\"'"
