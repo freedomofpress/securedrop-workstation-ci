@@ -177,7 +177,7 @@ class QubesCI:
         self.run_cmd("sudo qubesctl state.sls qvm.sys-usb", teardown=True)
 
         # Uninstall all the other VMs
-        self.run_cmd(f"{self.working_dir}/scripts/sdw-admin.py --uninstall --force", teardown=True)
+        self.run_cmd(f"{self.working_dir}/files/sdw-admin.py --uninstall --force", teardown=True)
 
         # Remove final remaining cruft on dom0
         cruft_dirs = [
