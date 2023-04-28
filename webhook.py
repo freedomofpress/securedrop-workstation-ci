@@ -30,6 +30,16 @@ def on_push(data):
     # Copy the config files we need
     shutil.copyfile("config.json", f"{workspace}/config.json")
     shutil.copyfile("sd-journalist.sec", f"{workspace}/sd-journalist.sec")
+
+    # Post pending status back to Github
+    subprocess.check_call([
+        "/home/user/bin/upload-report",
+        "--status",
+        "pending",
+        "--sha",
+        commit
+    ])
+
     # RPC call to trigger running the build on dom0
     # Note: I don't call p.communicate() (or use check_call()/check_output() instead of Pppen)
     # because it otherwise waits for the dom0 runner.py to finish, which takes a long time, and
