@@ -84,7 +84,7 @@ def report_status(status, sha, report):
         status = "pending"
     data["state"] = status
 
-    r = requests.post(f"https://api.github.com/repos/mig5/securedrop-workstation/statuses/{sha}", json=data, headers=headers)
+    r = requests.post(f"https://api.github.com/repos/freedomofpress/securedrop-workstation/statuses/{sha}", json=data, headers=headers)
 
 
 if __name__ == "__main__":
