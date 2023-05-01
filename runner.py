@@ -11,8 +11,8 @@ import sys
 import getpass
 from datetime import datetime
 
-class QubesCI:
 
+class QubesCI:
     def __init__(self):
         """
         Set some environment variables and attributes, logging handler
@@ -21,7 +21,9 @@ class QubesCI:
         os.environ["SECUREDROP_DEV_VM"] = "sd-ssh"
         os.environ["SECUREDROP_PROJECTS_DIR"] = "/var/lib/sdci-ci-runner/"
         os.environ["SECUREDROP_REPO_DIR"] = sys.argv[1]
-        os.environ["SECUREDROP_DEV_DIR"] = os.environ["SECUREDROP_PROJECTS_DIR"] + os.environ["SECUREDROP_REPO_DIR"]
+        os.environ["SECUREDROP_DEV_DIR"] = (
+            os.environ["SECUREDROP_PROJECTS_DIR"] + os.environ["SECUREDROP_REPO_DIR"]
+        )
 
         # Set simpler variables for python use of the above env vars
         self.securedrop_dev_vm = os.environ["SECUREDROP_DEV_VM"]
@@ -34,6 +36,7 @@ class QubesCI:
         # variables and make some assumptions about Qubes home dir locations
         self.username = getpass.getuser()
         self.home_dir = f"/home/{self.username}"
+        self.working_dir = f"{self.home_dir}/{self.securedrop_dom0_dev_dir}"
 
         # Load our QubesVM objects
         self.q = qubesadmin.Qubes()
@@ -52,43 +55,46 @@ class QubesCI:
         self.log_file = f"{date_name}-{time_name}.log.txt"
         self.logging = logging
         self.logging.basicConfig(
-                format='%(levelname)s:%(message)s',
-                level=logging.INFO,
-                handlers=[
-                    logging.FileHandler(f"{self.home_dir}/{self.log_file}"),
-                    logging.StreamHandler()
-                ]
+            format="%(levelname)s:%(message)s",
+            level=logging.INFO,
+            handlers=[
+                logging.FileHandler(f"{self.home_dir}/{self.log_file}"),
+                logging.StreamHandler(),
+            ],
         )
 
         # Report to Github that the build has started running
-        subprocess.check_call([
-            "qvm-run",
-            self.securedrop_dev_vm,
-            "/home/user/bin/upload-report",
-            "--status",
-            "running",
-            "--sha",
-            self.commit_sha
-        ])
+        subprocess.check_call(
+            [
+                "qvm-run",
+                self.securedrop_dev_vm,
+                "/home/user/bin/upload-report",
+                "--status",
+                "running",
+                "--sha",
+                self.commit_sha,
+            ]
+        )
 
         self.dirty_file = "/var/tmp/sd-ci-runner.dirty"
-        # Is our environment 'dirty' (bad teardown during last build?)
+        # Is our environment 'dirty' (bad teardown during last build)?
+        # If so, attempt an optimistic teardown sequence.
         if os.path.exists(self.dirty_file):
-            message = "Can't proceed with build: environment is dirty"
-            self.logging.info(message)
-            self.status = "error"
-            self.uploadLog()
-            raise SystemError(message)
+            self.teardown(early=True)
+        # Else, create the dirty file while running.. a successful teardown will remove it
+        else:
+            open(self.dirty_file, "w").close()
 
-    def run_cmd(self, cmd, teardown=False):
+    def run_cmd(self, cmd, teardown=False, ignore_errors=False):
         """
         Run any command as a subprocess, and ensure both its
         stdout and stderr get logged to the logging handler.
-        
+
         Also detect if the command returned a non-zero returncode,
         and if so, mark the overall status as a failure so that
         we report it as such as a git commit status later.
         """
+
         def format_current_timestamp():
             now = datetime.now()
             date_name = now.strftime("%Y-%m-%d")
@@ -97,10 +103,10 @@ class QubesCI:
             return timestamp
 
         def log_subprocess_output(pipe):
-            ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
+            ansi_escape = re.compile(r"(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]")
             for line in pipe:
                 timestamp = format_current_timestamp()
-                line_decoded = ansi_escape.sub('', line.decode('utf-8'))
+                line_decoded = ansi_escape.sub("", line.decode("utf-8"))
                 self.logging.info(f"[{timestamp}] {line_decoded}")
 
         command_line_args = shlex.split(cmd)
@@ -108,9 +114,9 @@ class QubesCI:
         self.logging.info(f"[{timestamp}] Running: {cmd}")
 
         p = subprocess.Popen(
-                command_line_args,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+            command_line_args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
         )
 
         out, err = p.communicate()
@@ -121,14 +127,14 @@ class QubesCI:
             self.logging.info(f"[{timestamp}] Exception occurred during: {cmd}")
             if teardown:
                 self.status = "error"
-                # Mark the environment as 'dirty' - it may need manual cleaning up
-                # to avoid skewing results on the next build
-                open(self.dirty_file, "w").close()
+                # There are some early teardown steps that we need to just push through
+                # depending on where last build failed
+                if ignore_errors:
+                    self.status = "success"
             else:
                 self.status = "failure"
         else:
             self.logging.info(f"[{timestamp}] Step finished")
-
 
     def build(self):
         """
@@ -137,7 +143,6 @@ class QubesCI:
         os.chdir(self.home_dir)
 
         # Wipe out our existing working dir on dom0
-        self.working_dir = f"{self.home_dir}/{self.securedrop_dom0_dev_dir}"
         if os.path.exists(self.working_dir):
             self.run_cmd(f"sudo chown -R {self.username} {self.working_dir}")
             shutil.rmtree(self.working_dir)
@@ -145,15 +150,17 @@ class QubesCI:
         # Generate our tarball in the appVM and extract it into dom0
         self.tar_file = f"{self.home_dir}/{self.securedrop_repo_dir}.tar"
         with open(self.tar_file, "w") as tarball:
-            subprocess.check_call([
-                "qvm-run",
-                "--pass-io",
-                self.securedrop_dev_vm,
-                f"tar -c -C {self.securedrop_projects_dir} {self.securedrop_repo_dir}",
-            ], stdout = tarball)
+            subprocess.check_call(
+                [
+                    "qvm-run",
+                    "--pass-io",
+                    self.securedrop_dev_vm,
+                    f"tar -c -C {self.securedrop_projects_dir} {self.securedrop_repo_dir}",
+                ],
+                stdout=tarball,
+            )
             self.run_cmd(f"tar xvf {self.tar_file}")
             shutil.move(f"{self.home_dir}/{self.securedrop_repo_dir}", self.working_dir)
-
 
     def test(self):
         """
@@ -164,8 +171,7 @@ class QubesCI:
         self.run_cmd("make dev")
         self.run_cmd("make test")
 
-
-    def teardown(self):
+    def teardown(self, early=False):
         """
         Teardown - uninstall all the VMs/templates and any other cruft.
         """
@@ -176,44 +182,109 @@ class QubesCI:
         # Rebuild the sys-usb with Salt
         self.run_cmd("sudo qubesctl state.sls qvm.sys-usb", teardown=True)
 
-        # Uninstall all the other VMs
-        self.run_cmd(f"{self.working_dir}/files/sdw-admin.py --uninstall --force", teardown=True)
+        # If we are trying an early teardown, optimistically copy the scripts
+        # to where sdw-admin.py expects, and then run it. Otherwise, it can
+        # fail because some of the scripts/files are unexpectedly missing.
+        if early:
+            copy_files = ["clean-salt", "destroy-vm"]
+            self.run_cmd(
+                f"sudo mkdir -p /usr/share/securedrop-workstation-dom0-config/scripts",
+                teardown=True,
+            )
+            for f in copy_files:
+                self.run_cmd(
+                    f"sudo cp -a {self.working_dir}/files/{f} /usr/share/securedrop-workstation-dom0-config/scripts/",
+                    teardown=True,
+                )
+
+            # These commands are effectively the same as sdw-admin.py --uninstall --force.
+            # The difference is we don't want to raise an exception if the salt steps fail
+            # because the most common case for this in an 'early' teardown is because there
+            # is no salt state for the SD stuff in the first place. We can still try it,
+            # but the focus is on ensuring all the VMs are removed.
+            self.run_cmd(
+                "sudo qubesctl state.sls sd-clean-default-dispvm",
+                teardown=True,
+                ignore_errors=True,
+            )
+            self.run_cmd(
+                "/usr/share/securedrop-workstation-dom0-config/scripts/destroy-vm --all",
+                teardown=True,
+            )
+            self.run_cmd(
+                "sudo qubesctl state.sls sd-clean-all",
+                teardown=True,
+                ignore_errors=True,
+            )
+            self.run_cmd(
+                "/usr/share/securedrop-workstation-dom0-config/scripts/clean-salt",
+                teardown=True,
+            )
+            self.run_cmd(
+                "sudo dnf -y -q remove securedrop-workstation-dom0-config",
+                teardown=True,
+            )
 
         # Remove final remaining cruft on dom0
-        cruft_dirs = [
-            self.working_dir,
-            "/usr/share/securedrop",
-            "/usr/share/securedrop-workstation-dom0-config"
-        ]
-        for cruft in cruft_dirs:
-            if os.path.exists(cruft):
-                self.run_cmd(f"sudo rm -rf {cruft}", teardown=True)
-        if os.path.exists(self.tar_file):
-            self.run_cmd(f"rm -f {self.tar_file}", teardown=True)
-        # Remove the original working dir on the appVM that was populated by the webhook
-        self.run_cmd(f"qvm-run {self.securedrop_dev_vm} rm -rf {self.securedrop_dev_dir}", teardown=True)
+        else:
+            self.run_cmd(
+                f"{self.working_dir}/files/sdw-admin.py --uninstall --force",
+                teardown=True,
+            )
+            cruft_dirs = [
+                "/usr/share/securedrop",
+                "/usr/share/securedrop-workstation-dom0-config",
+            ]
+            for cruft in cruft_dirs:
+                if os.path.exists(cruft):
+                    self.run_cmd(f"sudo rm -rf {cruft}", teardown=True)
 
+            if os.path.exists(self.tar_file):
+                self.run_cmd(f"rm -f {self.tar_file}", teardown=True)
+            # Remove the original working dir on the appVM that was populated by the webhook
+            self.run_cmd(
+                f"qvm-run {self.securedrop_dev_vm} rm -rf {self.securedrop_dev_dir}",
+                teardown=True,
+            )
+
+        # If we got to the other side of teardown and the self.status
+        # is not error or failure, clean up the 'dirty' file.
+        if self.status == "success":
+            self.run_cmd(f"rm -f {self.dirty_file}")
+        else:
+            # If the teardown still failed and we were in early mode, give up,
+            # something is seriously wrong and requires manual intervention.
+            if early:
+                message = "Can't proceed with build: environment is dirty and optimistic early teardown (cleanup) also failed"
+                self.logging.info(message)
+                self.status = "error"
+                self.uploadLog()
+                raise SystemError(message)
 
     def uploadLog(self):
         """
         Copy the log file to the appVM and trigger the upload/commit status in Github.
         """
-        subprocess.check_call([
-            "qvm-copy-to-vm",
-            self.securedrop_dev_vm,
-            f"{self.home_dir}/{self.log_file}"
-        ])
-        subprocess.check_call([
-            "qvm-run",
-            self.securedrop_dev_vm,
-            "/home/user/bin/upload-report",
-            "--file",
-            self.log_file,
-            "--status",
-            self.status,
-            "--sha",
-            self.commit_sha
-        ])
+        subprocess.check_call(
+            [
+                "qvm-copy-to-vm",
+                self.securedrop_dev_vm,
+                f"{self.home_dir}/{self.log_file}",
+            ]
+        )
+        subprocess.check_call(
+            [
+                "qvm-run",
+                self.securedrop_dev_vm,
+                "/home/user/bin/upload-report",
+                "--file",
+                self.log_file,
+                "--status",
+                self.status,
+                "--sha",
+                self.commit_sha,
+            ]
+        )
 
 
 if __name__ == "__main__":
