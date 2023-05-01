@@ -70,6 +70,7 @@ def report_status(status, sha, report):
             "Content-Type": "application/json",
     }
     data = {}
+    data["context"] = "sd-ci-runner"
     data["description"] = description
     if status in ["error", "failure", "success"]:
         data["target_url"] = f"https://ws-ci-runner.securedrop.org/{report}"
