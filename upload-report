@@ -64,7 +64,6 @@ def report_status(status, sha, report):
     else:
         raise SystemError(f"Unrecognized status: {status}")
 
-    # Currently uses mig5's own PAT, we would want to use sdcibot in prod I imagine
     github_token = "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     headers = {
             "Authorization": f"Bearer {github_token}",
