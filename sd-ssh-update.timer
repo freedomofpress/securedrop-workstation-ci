@@ -1,0 +1,7 @@
+[Timer]
+Persistent=true
+OnCalendar=*-*-* 01:00:00
+Unit=sd-ssh-update.service
+
+[Install]
+WantedBy=timers.target

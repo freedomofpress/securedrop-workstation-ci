@@ -1,0 +1,10 @@
+[Unit]
+Description=Run updates on the sd-ssh standaloneVM
+
+[Service]
+User=user
+Type=simple
+ExecStart=/home/user/sd-ssh-update.sh
+
+[Install]
+WantedBy=default.target
