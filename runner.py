@@ -188,7 +188,7 @@ class QubesCI:
         if early:
             copy_files = ["clean-salt", "destroy-vm"]
             self.run_cmd(
-                f"sudo mkdir -p /usr/share/securedrop-workstation-dom0-config/scripts",
+                "sudo mkdir -p /usr/share/securedrop-workstation-dom0-config/scripts",
                 teardown=True,
             )
             for f in copy_files:
@@ -244,6 +244,11 @@ class QubesCI:
             # Remove the original working dir on the appVM that was populated by the webhook
             self.run_cmd(
                 f"qvm-run {self.securedrop_dev_vm} rm -rf {self.securedrop_dev_dir}",
+                teardown=True,
+            )
+            # Remove the Docker image
+            self.run_cmd(
+                f"qvm-run {self.securedrop_dev_vm} docker rmi securedrop-workstation-dom0-config",
                 teardown=True,
             )
 
