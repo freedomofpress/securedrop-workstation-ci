@@ -16,7 +16,7 @@ This document tries to help FPF/SD engineers install the scripts on a Qubes 4.1+
 
 3. Put the files `qubes.SDCIRunner` and `qubes.SDCICanceler` in `/etc/qubes-rpc/`. Ensure they are executable.
 
-4. Put the files `qubes.SDCIRunner.policy` and `qubes.SDCICanceler.policy as `/etc/qubes-rpc/policy/qubes.SDCIRunner` and `/etc/qubes-rpc/policy/qubes.SDCICanceler`.
+4. Put the files `qubes.SDCIRunner.policy` and `qubes.SDCICanceler.policy` as `/etc/qubes-rpc/policy/qubes.SDCIRunner` and `/etc/qubes-rpc/policy/qubes.SDCICanceler`.
 
 
 ## Instructions for sd-ssh
