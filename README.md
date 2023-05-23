@@ -27,7 +27,7 @@ This document tries to help FPF/SD engineers install the scripts on a Qubes 4.1+
 
 3. Put a `config.json` and `sd-journalist.sec` (prepared earlier as part of installation instructions) in `/var/lib/sdci-ci-runner`. At this point, `sudo chown -R user.user /var/lib/sdci-ci-runner`
 
-4. Put `upload-file` and `cancel.py` in `/home/user/bin`. Generate a PAT in Github with full `repo:` access and ensure that that PAT is in `upload-file`, so that the script can post git commit statuses back to Github.
+4. Put `upload-report` and `cancel.py` in `/home/user/bin`. Generate a PAT in Github with full `repo:` access and ensure that that PAT is in `upload-report`, so that the script can post git commit statuses back to Github.
 
 5. Put `sdci-repo-webhook.service` in `/etc/systemd/system/`. Configure a webhook 'secret' in this systemd file. Also adjust the `FLASK_RUN_HOST` to the IP of your sd-ssh machine's Tailscale IP.
 
@@ -39,7 +39,7 @@ This document tries to help FPF/SD engineers install the scripts on a Qubes 4.1+
 
 9. Configure the webhook in your repository for the 'push' event, with the same secret you put in the systemd file in step 5. The URL would be https://ws-ci-runner.securedrop.org/hook/postreceive per https://github.com/freedomofpress/infrastructure/pull/4111 . You will also need to have an Nginx proxy somewhere answering for the 'outer' HTTPS request, and proxying through to your sd-ssh machine's port 5000 Flask app (via Tailscale)
 
-10. Generate an SSH key on sd-ssh with `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_sdci_upload`, and ensure this key is in the `/home/wscirunner/.ssh/authorized_keys` on the ws-ci-runner droplet proxy (so that `upload-file` can scp up the log results). Run `ssh -i ~/.ssh/id_ed25519_sdci_upload wscirunner@ws-ci-runner.securedrop.org` once to accept the host key signature.
+10. Generate an SSH key on sd-ssh with `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_sdci_upload`, and ensure this key is in the `/home/wscirunner/.ssh/authorized_keys` on the ws-ci-runner droplet proxy (so that `upload-report` can scp up the log results). Run `ssh -i ~/.ssh/id_ed25519_sdci_upload wscirunner@ws-ci-runner.securedrop.org` once to accept the host key signature.
 
 
 ## Test it
@@ -61,7 +61,7 @@ Try and push a commit and see if the webhook works!
 
 The runner.py will detect if any of the commands succeed or fail but it should not abort on failure (so that the teardown still completes).
 
-6. At the end of the process, the dom0 will copy its log file to the sd-ssh machine and then call `upload-file` via `qvm-run` on that machine with the status of the build.
+6. At the end of the process, the dom0 will copy its log file to the sd-ssh machine and then call `upload-report` via `qvm-run` on that machine with the status of the build.
 
 That script will upload the log to the ws-ci-runner proxy for viewing in a browser at https://ws-ci-runner.securedrop.org, and will also post a commit status to Github, with the `target_url` pointing to the HTTPS URL of that log file on the ws-ci-runner, and with the status of the build.
 
