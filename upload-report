@@ -64,13 +64,13 @@ def report_status(status, sha, report):
     else:
         raise SystemError(f"Unrecognized status: {status}")
 
-    # Currently uses mig5's own PAT, we would want to use sdcibot in prod I imagine
     github_token = "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     headers = {
             "Authorization": f"Bearer {github_token}",
             "Content-Type": "application/json",
     }
     data = {}
+    data["context"] = "sd-ci-runner"
     data["description"] = description
     if status in ["error", "failure", "success"]:
         data["target_url"] = f"https://ws-ci-runner.securedrop.org/{report}"

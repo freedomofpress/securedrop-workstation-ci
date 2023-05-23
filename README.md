@@ -41,6 +41,8 @@ This document tries to help FPF/SD engineers install the scripts on a Qubes 4.1+
 
 10. Generate an SSH key on sd-ssh with `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_sdci_upload`, and ensure this key is in the `/home/wscirunner/.ssh/authorized_keys` on the ws-ci-runner droplet proxy (so that `upload-report` can scp up the log results). Run `ssh -i ~/.ssh/id_ed25519_sdci_upload wscirunner@ws-ci-runner.securedrop.org` once to accept the host key signature.
 
+11. Ensure you have Docker installed on the sd-ssh appVM, and that the 'user' user is a member of the docker group. This is needed for the RPM build process of SD Workstation.
+
 
 ## Test it
 
