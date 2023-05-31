@@ -246,9 +246,13 @@ class QubesCI:
                 f"qvm-run {self.securedrop_dev_vm} rm -rf {self.securedrop_dev_dir}",
                 teardown=True,
             )
-            # Remove the Docker image
+            # Remove the Docker image and prune
             self.run_cmd(
                 f"qvm-run {self.securedrop_dev_vm} docker rmi securedrop-workstation-dom0-config",
+                teardown=True,
+            )
+            self.run_cmd(
+                f"qvm-run {self.securedrop_dev_vm} docker system prune --force",
                 teardown=True,
             )
 
