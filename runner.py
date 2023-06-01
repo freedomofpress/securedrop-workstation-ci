@@ -81,9 +81,9 @@ class QubesCI:
         # If so, attempt an optimistic teardown sequence.
         if os.path.exists(self.dirty_file):
             self.teardown(early=True)
-        # Else, create the dirty file while running.. a successful teardown will remove it
-        else:
-            open(self.dirty_file, "w").close()
+
+        # Create the dirty file while running.. a successful teardown will remove it
+        open(self.dirty_file, "w").close()
 
     def run_cmd(self, cmd, teardown=False, ignore_errors=False):
         """
@@ -133,6 +133,9 @@ class QubesCI:
                     self.status = "success"
             else:
                 self.status = "failure"
+                # We failed on a step, so stop the build, and upload the results
+                self.uploadLog()
+                sys.exit(1)
         else:
             self.logging.info(f"[{timestamp}] Step finished")
 
