@@ -20,6 +20,14 @@ def on_push(data):
     repo = data["repository"]["name"]
     ssh_url = data["repository"]["clone_url"]
     commit = data["after"]
+
+    # When a branch is deleted, a webhook payload contains
+    # a commit that is all zeros, and an attribute of 'deleted' => true
+    # In that case, exit early.
+    if commit == "0000000000000000000000000000000000000000" and data.get("deleted", False):
+        logging.info(f"Event is branch deletion, not running CI for {ref}")
+        return
+
     logging.info(f"running on {ref}")
     # checkout that relevant commit
     workspace = f"{repo}_{commit}"
