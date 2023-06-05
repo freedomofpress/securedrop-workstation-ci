@@ -28,6 +28,11 @@ def on_push(data):
         logging.info(f"Event is branch deletion, not running CI for {ref}")
         return
 
+    # Ignore branches that have skip-ci in the name
+    if "skip-ci" in ref:
+        logging.info(f"Skipping CI for {ref}")
+        return
+
     logging.info(f"running on {ref}")
     # checkout that relevant commit
     workspace = f"{repo}_{commit}"
