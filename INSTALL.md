@@ -114,12 +114,6 @@ This will pull up the `sdci-repo-webhook.service` file. Edit it to fill in
 `SDCI_REPO_WEBHOOK_SECRET` and adjust the `FLASK_RUN_HOST` to the IP of your sd-ssh machine's
 Tailscale IP so that the service listens only on that interface.
 
-Create a `config.json` copied from [this
-example](https://github.com/freedomofpress/securedrop-workstation/blob/main/files/config.json.example)
-and a `sd-journalist.sec` copied from [this
-example](https://github.com/freedomofpress/securedrop-workstation/blob/main/sd-journalist.sec.example),
-and store them in `/var/lib/sdci-ci-runner`.
-
 # Configure the scripts on GitHub
 
 1. Generate a PAT in Github with full `repo:` access and ensure that that PAT is set in the
