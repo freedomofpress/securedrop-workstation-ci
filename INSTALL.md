@@ -98,13 +98,7 @@ systemctl enable docker
 You're nearly done! Now you need to install the actual CI scripts, systemd unit files, and other
 config from this very repo into your dom0 and sd-ssh.
 
-1. In `dom0`, run
-
-```
-sudo ./install/dom0
-```
-
-2. In `sd-ssh`, run
+1. In `sd-ssh`, run
 
 ```
 sudo ./install/sd-ssh
@@ -113,6 +107,19 @@ sudo ./install/sd-ssh
 This will pull up the `sdci-repo-webhook.service` file. Edit it to fill in
 `SDCI_REPO_WEBHOOK_SECRET` and adjust the `FLASK_RUN_HOST` to the IP of your sd-ssh machine's
 Tailscale IP so that the service listens only on that interface.
+
+2. Copy files from `sd-ssh` to `dom0` (do this any time you pull an
+   update to the git repository, from the home directory):
+
+```
+qvm-run --pass-io sd-ssh 'tar -c -C /home/user securedrop-workstation-ci' | tar xvf -
+```
+
+3. In `dom0`, run
+
+```
+sudo ./install/dom0
+```
 
 # Configure the scripts on GitHub
 
