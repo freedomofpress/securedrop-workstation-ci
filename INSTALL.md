@@ -123,9 +123,9 @@ sudo ./install/dom0
 
 # Configure the scripts on GitHub
 
-1. Generate a PAT in Github with full `repo:` access and ensure that that PAT is set in the
-   `upload-report` script as the `github_token` variable, so that the script can post git commit
-   statuses back to Github.
+1. Generate a PAT in Github with full `repo:` access and ensure that that PAT is written to
+   `/home/user/sdci-ghp.txt`. This will be used by `upload-report`, so that the script can post git
+   commit statuses back to Github.
 
 2. Configure the webhook in your repository for the 'push' event, with the same secret you put in
    the systemd file in step 7.
