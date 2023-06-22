@@ -1,0 +1,19 @@
+#!/bin/sh
+
+if ! test -e runner.py -a "$(hostname)" = 'dom0'; then
+    echo "error: please run from the top-level directory in dom0"
+    exit 2
+fi
+
+# TODO: let's have a ~/bin on dom0 too
+cp -a runner.py sd-ssh-update.sh ~/
+
+sudo cp -a qubes.SDCIRunner.policy /etc/qubes-rpc/policy/qubes.SDCIRunner
+sudo cp -a qubes.SDCICanceler.policy /etc/qubes-rpc/policy/qubes.SDCICanceler
+
+sudo cp -a sd-ssh-update.service sd-ssh-update.timer /etc/systemd/system
+
+sudo systemctl daemon-reload
+sudo systemctl enable sd-ssh-update.service
+sudo systemctl enable sd-ssh-update.timer
+sudo systemctl start sd-ssh-update.timer

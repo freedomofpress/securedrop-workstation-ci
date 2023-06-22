@@ -1,0 +1,25 @@
+#!/bin/sh
+
+if ! test -e webhook.py -a "$(hostname)" = 'sd-ssh'; then
+    echo "error: please run from the top-level directory in sd-ssh"
+    exit 2
+fi
+
+sudo mkdir -p /var/lib/sdci-ci-runner
+sudo chown user:user /var/lib/sdci-ci-runner
+cp -a webhook.py /var/lib/sdci-ci-runner
+
+for f in config.json sd-journalist.sec; do
+    out="/var/lib/sdci-ci-runner/${f}"
+    test -f "$out" || curl -L -o "$out" "https://github.com/freedomofpress/securedrop-workstation/raw/main/files/${f}.example"
+done
+
+mkdir -p ~/bin
+cp -a upload-report cancel.py ~/bin
+
+sudo cp -a sdci-repo-webhook.service /etc/systemd/system
+sudo vi /etc/systemd/system/sdci-repo-webhook.service
+
+sudo systemctl daemon-reload
+sudo systemctl enable sdci-repo-webhook
+sudo systemctl start sdci-repo-webhook
