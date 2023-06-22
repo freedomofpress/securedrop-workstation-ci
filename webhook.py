@@ -1,13 +1,18 @@
 import os
+import sys
 import subprocess
 import logging
 import shutil
 from flask import Flask
 from github_webhook import Webhook
 
-secret = os.environ["SDCI_REPO_WEBHOOK_SECRET"]
-listen_ip = os.environ["FLASK_RUN_HOST"]
-listen_port = 5000
+try:
+    secret = os.environ["SDCI_REPO_WEBHOOK_SECRET"]
+    listen_ip = os.environ["FLASK_RUN_HOST"]
+    listen_port = int(os.environ.get("FLASK_RUN_PORT", "5000"))
+except KeyError:
+    logging.error("Please set SDCI_REPO_WEBHOOK_SECRET and FLASK_RUN_HOST in .flaskenv")
+    sys.exit(1)
 
 app = Flask(__name__)
 webhook = Webhook(app, secret=secret)

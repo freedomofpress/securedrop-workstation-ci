@@ -49,7 +49,7 @@ Also ensure that you check the box to 'Start qube automatically on boot' in the 
 
 ```
 sudo dnf install openssh-server rpm-build dnf-plugins-core python3-pip python3-flask python3-paramiko python3-scp
-sudo pip3 install github-webhook
+sudo pip3 install python-dotenv github-webhook
 sudo systemctl ssh enable
 ```
 
@@ -104,9 +104,9 @@ config from this very repo into your dom0 and sd-ssh.
 sudo ./install/sd-ssh
 ```
 
-This will pull up the `sdci-repo-webhook.service` file. Edit it to fill in
-`SDCI_REPO_WEBHOOK_SECRET` and adjust the `FLASK_RUN_HOST` to the IP of your sd-ssh machine's
-Tailscale IP so that the service listens only on that interface.
+This will pull up the `.flaskenv` file. Edit it to fill in `SDCI_REPO_WEBHOOK_SECRET` and adjust the
+`FLASK_RUN_HOST` to the IP of your sd-ssh machine's Tailscale IP so that the service listens only on
+that interface.
 
 2. Copy files from `sd-ssh` to `dom0` (do this any time you pull an
    update to the git repository, from the home directory):

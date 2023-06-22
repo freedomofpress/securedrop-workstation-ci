@@ -18,7 +18,9 @@ mkdir -p ~/bin
 cp -a upload-report cancel.py ~/bin
 
 sudo cp -a sdci-repo-webhook.service /etc/systemd/system
-sudo vi /etc/systemd/system/sdci-repo-webhook.service
+
+flaskenv=/var/lib/sdci-ci-runner/.flaskenv
+test -e "$flaskenv" || sudo vi "$flaskenv"
 
 sudo systemctl daemon-reload
 sudo systemctl enable sdci-repo-webhook
