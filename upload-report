@@ -64,7 +64,8 @@ def report_status(status, sha, report):
     else:
         raise SystemError(f"Unrecognized status: {status}")
 
-    github_token = "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    with open("/home/user/sdci-ghp.txt") as f:
+        github_token = f.read().strip()
     headers = {
             "Authorization": f"Bearer {github_token}",
             "Content-Type": "application/json",
