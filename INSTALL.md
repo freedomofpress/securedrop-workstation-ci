@@ -49,7 +49,7 @@ Also ensure that you check the box to 'Start qube automatically on boot' in the 
 
 ```
 sudo dnf install openssh-server rpm-build dnf-plugins-core python3-pip python3-flask python3-paramiko python3-scp
-sudo pip3 install github-webhook
+sudo pip3 install python-dotenv github-webhook
 sudo systemctl ssh enable
 ```
 
