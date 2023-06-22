@@ -110,9 +110,9 @@ sudo ./install/dom0
 sudo ./install/sd-ssh
 ```
 
-This will pull up the `sdci-repo-webhook.service` file. Edit it to fill in
-`SDCI_REPO_WEBHOOK_SECRET` and adjust the `FLASK_RUN_HOST` to the IP of your sd-ssh machine's
-Tailscale IP so that the service listens only on that interface.
+This will pull up the `.flaskenv` file. Edit it to fill in `SDCI_REPO_WEBHOOK_SECRET` and adjust the
+`FLASK_RUN_HOST` to the IP of your sd-ssh machine's Tailscale IP so that the service listens only on
+that interface.
 
 # Configure the scripts on GitHub
 
