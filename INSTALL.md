@@ -50,7 +50,8 @@ Also ensure that you check the box to 'Start qube automatically on boot' in the 
 ```
 sudo dnf install openssh-server rpm-build dnf-plugins-core python3-pip python3-flask python3-paramiko python3-scp
 sudo pip3 install python-dotenv github-webhook
-sudo systemctl ssh enable
+sudo systemctl enable sshd
+sudo systemctl start sshd
 ```
 
 2. Install Tailscale:
@@ -98,27 +99,29 @@ systemctl enable docker
 You're nearly done! Now you need to install the actual CI scripts, systemd unit files, and other
 config from this very repo into your dom0 and sd-ssh.
 
-1. In `sd-ssh`, run
+1. Start by cloning this repo into your sd-ssh VM.
+
+2. In `sd-ssh`, run the following script as 'user' (not as root/sudo)
 
 ```
-sudo ./install/sd-ssh
+./install/sd-ssh
 ```
 
 This will pull up the `.flaskenv` file. Edit it to fill in `SDCI_REPO_WEBHOOK_SECRET` and adjust the
 `FLASK_RUN_HOST` to the IP of your sd-ssh machine's Tailscale IP so that the service listens only on
 that interface.
 
-2. Copy files from `sd-ssh` to `dom0` (do this any time you pull an
+3. Copy files from `sd-ssh` to `dom0` (do this any time you pull an
    update to the git repository, from the home directory):
 
 ```
 qvm-run --pass-io sd-ssh 'tar -c -C /home/user securedrop-workstation-ci' | tar xvf -
 ```
 
-3. In `dom0`, run
+4. In `dom0`, run as 'user' (not as root/sudo)
 
 ```
-sudo ./install/dom0
+./install/dom0
 ```
 
 # Configure the scripts on GitHub
