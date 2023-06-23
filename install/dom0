@@ -10,6 +10,8 @@ cp -a runner.py sd-ssh-update.sh ~/
 
 sudo cp -a qubes.SDCIRunner.policy /etc/qubes-rpc/policy/qubes.SDCIRunner
 sudo cp -a qubes.SDCICanceler.policy /etc/qubes-rpc/policy/qubes.SDCICanceler
+sudo cp -a qubes.SDCIRunner /etc/qubes-rpc/qubes.SDCIRunner
+sudo cp -a qubes.SDCICanceler /etc/qubes-rpc/qubes.SDCICanceler
 
 sudo cp -a sd-ssh-update.service sd-ssh-update.timer /etc/systemd/system
 
