@@ -131,6 +131,9 @@ class QubesCI:
                 # depending on where last build failed
                 if ignore_errors:
                     self.status = "success"
+                else:
+                    self.uploadLog()
+                    sys.exit(1)
             else:
                 self.status = "failure"
                 # We failed on a step, so stop the build, and upload the results
