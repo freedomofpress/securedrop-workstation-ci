@@ -195,10 +195,19 @@ class QubesCI:
                 teardown=True,
             )
             for f in copy_files:
-                self.run_cmd(
-                    f"sudo cp -a {self.working_dir}/files/{f} /usr/share/securedrop-workstation-dom0-config/scripts/",
-                    teardown=True,
-                )
+                if os.path.exists(f"{self.working_dir}/files/{f}"):
+                    self.run_cmd(
+                        f"sudo cp -a {self.working_dir}/files/{f} /usr/share/securedrop-workstation-dom0-config/scripts/",
+                        teardown=True,
+                    )
+                # @TODO scripts/ path is legacy for these files, can probably be removed at some point
+                elif os.path.exists(f"{self.working_dir}/scripts/{f}"):
+                    self.run_cmd(
+                        f"sudo cp -a {self.working_dir}/scripts/{f} /usr/share/securedrop-workstation-dom0-config/scripts/",
+                        teardown=True,
+                    )
+                else:
+                    print("Could not find scripts to copy for teardown")
 
             # These commands are effectively the same as sdw-admin.py --uninstall --force.
             # The difference is we don't want to raise an exception if the salt steps fail
