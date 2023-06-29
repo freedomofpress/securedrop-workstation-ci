@@ -10,7 +10,7 @@ Please see the [INSTALL.md](INSTALL.md).
 
 ## How it works
 
-@TODO add architecture diagram.
+![Architecture diagram](SD_Qubes_CI.png)
 
 1. The webhook in Github delivers the payload to the proxy droplet.
 
