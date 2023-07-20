@@ -115,6 +115,7 @@ class QubesCI:
 
         p = subprocess.Popen(
             command_line_args,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
         )
