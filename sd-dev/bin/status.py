@@ -2,8 +2,6 @@
 
 import argparse
 import requests
-from paramiko import SSHClient
-from scp import SCPClient
 
 
 def parse_args():
@@ -12,10 +10,10 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-            "--file",
+            "--log",
             default = "",
             action="store",
-            help="Path to the report file to upload to the proxy",
+            help="Path to the log file",
     )
     parser.add_argument(
             "--status",
@@ -33,26 +31,14 @@ def parse_args():
     return args
 
 
-def upload_report(report):
-    """
-    Uploads the report to the CI runner proxy
-    """
-    ssh_ob = SSHClient()
-    ssh_ob.load_system_host_keys()
-    ssh_ob.connect(hostname="ws-ci-runner.securedrop.org", username="wscirunner", key_filename="/home/user/.ssh/id_ed25519_sdci_upload")
-    scp = SCPClient(ssh_ob.get_transport())
-    scp.put(f"/home/user/QubesIncoming/dom0/{report}", remote_path="/var/www/html/reports")
-    scp.close()
-
-
-def report_status(status, sha, report):
+def report_status(status, sha, log):
     """
     Reports a Github commit status
     """
     if status == "error":
-        description = "There was a problem during the teardown process"
+        description = "There was a problem during the CI execution"
     elif status == "failure":
-        description = "There was a problem during the build or test process"
+        description = "The build or test process failed"
     elif status == "success":
         description = "The build succeeded"
     elif status == "pending":
@@ -64,7 +50,7 @@ def report_status(status, sha, report):
     else:
         raise SystemError(f"Unrecognized status: {status}")
 
-    with open("/home/user/sdci-ghp.txt") as f:
+    with open("/home/user/.sdci-ghp.txt") as f:
         github_token = f.read().strip()
     headers = {
             "Authorization": f"Bearer {github_token}",
@@ -74,7 +60,7 @@ def report_status(status, sha, report):
     data["context"] = "sd-ci-runner"
     data["description"] = description
     if status in ["error", "failure", "success"]:
-        data["target_url"] = f"https://ws-ci-runner.securedrop.org/{report}"
+        data["target_url"] = f"https://ws-ci-runner.securedrop.org/{log}"
 
     # Github expects state 'error', 'failure', 'success' or 'pending'.
     # Override our non-standard statuses to the closest match to make the
@@ -85,14 +71,11 @@ def report_status(status, sha, report):
         status = "pending"
     data["state"] = status
 
-    r = requests.post(f"https://api.github.com/repos/freedomofpress/securedrop-workstation/statuses/{sha}", json=data, headers=headers)
+    requests.post(f"https://api.github.com/repos/freedomofpress/securedrop-workstation/statuses/{sha}", json=data, headers=headers)
 
 
 if __name__ == "__main__":
     # Parse args
     args = parse_args()
-    if args.status in ["error", "failure", "success"]:
-        # Upload the report to the CI runner proxy
-        upload_report(args.file)
     # Report Github status check
-    report_status(args.status, args.sha, args.file)
+    report_status(args.status, args.sha, args.log)

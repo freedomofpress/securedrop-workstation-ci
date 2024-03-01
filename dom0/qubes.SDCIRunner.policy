@@ -1,4 +1,4 @@
 # This file goes in /etc/qubes-rpc/policy/qubes.SDCIRunner on the dom0
 
-sd-ssh dom0 allow
+sd-dev dom0 allow
 $anyvm $anyvm deny

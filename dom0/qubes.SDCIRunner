@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# This file goes in /etc/qubes-rpc/qubes.SDCIRunner on the dom0
+# It gets executed with qrclient-exec-vm by the webhook.py in sd-dev
+
+dom0_user="user"
+
+if [[ $USER != "$dom0_user" ]]; then
+    su "$dom0_user" -c "/home/${dom0_user}/runner.py \"$@\""
+else
+    /home/${dom0_user}/runner.py "$@"
+fi

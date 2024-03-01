@@ -3,7 +3,9 @@
 This document explains how to install the CI for Securedrop Workstation.
 
 It involves a combination of dom0 and VM configuration on a Qubes installation, as well as steps in
-Github/Tailscale.
+Github.
+
+The information assumes you'll be running this on a virtual machine such as VMware.
 
 # Qubes install and initial provisioning
 
@@ -26,66 +28,35 @@ hardware) by running `qvm-start sys-usb`.
 5. Update dom0 and install `make`, referring again to
 [the next section of SDW docs](https://workstation.securedrop.org/en/stable/admin/install.html#apply-dom0-updates-estimated-wait-time-15-30-minutes)
 
+In our case, we also install `open-vm-tools` and run `sudo systemctl enable vmtoolsd`,
+as our scripts use vmtoolsd to issue commands to the dom0 from the VMware API.
+
 ```
-sudo qubes-dom0-update make
+sudo qubes-dom0-update make open-vm-tools
 ```
 
 6. Run any updates you see in the Qubes menu and then reboot.
 
-7. In dom0, create the sd-ssh StandaloneVM:
+7. In dom0, create the sd-dev StandaloneVM:
 
 ```
-sudo qvm-create --standalone --template fedora-37 --label red sd-ssh
-qvm-volume resize sd-ssh:root 50G
-qvm-volume resize sd-ssh:private 20G
-qvm-tags sd-ssh add sd-client
+sudo qvm-create --standalone --template fedora-37 --label red sd-dev
+qvm-volume resize sd-dev:root 50G
+qvm-volume resize sd-dev:private 20G
+qvm-tags sd-dev add sd-client
 ```
 
 Also ensure that you check the box to 'Start qube automatically on boot' in the Qubes settings.
 
-# Install dependencies on sd-ssh VM
+# Install dependencies on sd-dev VM
 
-1. Open a terminal in the sd-ssh VM and perform the following steps to install the core dependencies:
-
-```
-sudo dnf install openssh-server rpm-build dnf-plugins-core python3-pip python3-flask python3-paramiko python3-scp
-sudo pip3 install python-dotenv github-webhook
-sudo systemctl enable sshd
-sudo systemctl start sshd
-```
-
-2. Install Tailscale:
+1. Open a terminal in the sd-dev VM and perform the following steps to install the core dependencies:
 
 ```
-curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up --advertise-tags=tag:servers,tag:sd-ci-servers
+sudo dnf install rpm-build dnf-plugins-core
 ```
 
-Complete the approval of the device in Tailscale as an admin, by copying
-the link that is returned in the last step.
-
-Sign in with your GitHub account and approve your VM as a device on the
-`freedomofpress.org.github` tailnet, with a name describing the
-hardware like `sd-ssh-t14`; it will show up on [the machines
-list](https://login.tailscale.com/admin/machines). When authorizing
-Tailscale in Github OAuth consent, be sure to choose the "Multi-user"
-`freedomofpress` tailnet, if your Github account is a member of
-multiple organizations.
-
-3. Setup the firewall:
-
-```
-sudo -i
-
-iptables -I INPUT 3 -m tcp -p tcp --dport 22 -i tailscale0 -j ACCEPT
-ip6tables -I INPUT 3 -m tcp -p tcp --dport 22 -i tailscale0 -j ACCEPT
-iptables -I INPUT 3 -m tcp -p tcp --dport 5000 -i tailscale0 -j ACCEPT
-ip6tables -I INPUT 3 -m tcp -p tcp --dport 5000 -i tailscale0 -j ACCEPT
-iptables-save > /etc/qubes/iptables.rules
-ip6tables-save > /etc/qubes/ip6tables.rules
-```
-
-4. Setup docker:
+2. Setup docker:
 
 ```
 sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
@@ -94,65 +65,66 @@ sudo usermod -a -G docker user
 systemctl enable docker
 ```
 
-# Install the CI scripts from this repository
+Set up the sd-dev machine to automatically start at boot.
 
-You're nearly done! Now you need to install the actual CI scripts, systemd unit files, and other
-config from this very repo into your dom0 and sd-ssh.
+# Snapshot the VM
 
-1. Start by cloning this repo into your sd-ssh VM.
-
-2. In `sd-ssh`, run the following script as 'user' (not as root/sudo)
-
-```
-./install/sd-ssh
-```
-
-This will pull up the `.flaskenv` file. Edit it to fill in `SDCI_REPO_WEBHOOK_SECRET` and adjust the
-`FLASK_RUN_HOST` to the IP of your sd-ssh machine's Tailscale IP so that the service listens only on
-that interface.
-
-3. Copy files from `sd-ssh` to `dom0` (do this any time you pull an
-   update to the git repository, from the home directory):
-
-```
-qvm-run --pass-io sd-ssh 'tar -c -C /home/user securedrop-workstation-ci' | tar xvf -
-```
-
-4. In `dom0`, run as 'user' (not as root/sudo)
-
-```
-./install/dom0
-```
+At this point, if you're using VMware, you'll want to shut down and snapshot the VM, as it's now
+in a good state and could be cloned to make more of them!
 
 # Configure the scripts on GitHub
 
-1. Generate a PAT in Github with full `repo:` access and ensure that that PAT is written to
-   `/home/user/sdci-ghp.txt`. This will be used by `upload-report`, so that the script can post git
-   commit statuses back to Github.
+1. Generate a PAT in Github with full `repo:` access and ensure that that PAT is written to 
+   `sd-dev/.sdci-ghp.txt` on the machine that will execute the run.py on the host machine.
+   This will be used by `status.py`, so that the script can post git commit statuses back to Github.
 
 2. Configure the webhook in your repository for the 'push' event, with the same secret you put in
-   the systemd file in step 7.
+   the systemd file.
 
 The Payload URL of the webhook should be `https://ws-ci-runner.securedrop.org/hook/postreceive` and
 the Content type should be `application/json`. Ensure you keep `Enable SSL verification` turned on.
 
-# Generate SSH upload key
+# Test
 
-Generate an SSH key on sd-ssh with `ssh-keygen -t ed25519 -f
-~/.ssh/id_ed25519_sdci_upload`, and ensure that this key is in the
-`/home/wscirunner/.ssh/authorized_keys` on the tailscale proxy droplet.
-This ensures that the `upload-report` script can successfully scp up the
-log file to the proxy droplet. Run `ssh -i ~/.ssh/id_ed25519_sdci_upload
-wscirunner@ws-ci-runner.securedrop.org` once, on the sd-ssh VM, to
-accept the host key signature for the first time.
+Test the CI flow with `./run.py --version 4.1 --commit [some commit hash]`
 
-(TODO: cover setting up an SSH config file.)
 
-## Reboot and test
+# Options for `run.py`
 
-Do a full reboot of the Qubes system.
+There are a few options for `run.py` which is the main entry point that the webhook service calls.
 
-Then, double-check that sd-ssh has started automatically at boot and that it has started the Flask
-webhook service (look for a process `/usr/bin/python3 -m flask run`).
+## `--version [4.1|4.2]`
 
-After that, you can push a commit to the repository and test the webhook and CI process works.
+Set the version number of Qubes you are going to be running on, for example, 4.1 or 4.2.
+
+This helps the script find a VM with that version in its name, to use for the CI run.
+
+## `--commit [sha]`
+
+If you pass a commit hash, this will be understood that you want to run CI tests.
+
+## `--snapshot [id]`
+
+If you pass this option, the VM will be reverted to this snapshot if it exists, before being
+powered up.
+
+If you do not pass this option, a snapshot ID will be read from the config file for this
+VM, and the VM will be restored to that snapshot instead. (There is never a scenario whereby
+the VM is *not* restored from snapshot first, as that is our way of guaranteeing a 'clean
+start')
+ 
+## `--update`
+
+If you pass this flag, the system will boot the Qubes VM and run dom0, template and StandaloneVM
+updates via salt in the standard Qubes way.
+
+If you also passed `--commit`, it will be undertood that you want to run CI tests immediataly
+after having applied the updates. In this case, it will reboot the VM. This flow is useful for
+running 'nightly' tests.
+
+## `--save`
+
+If you pass this flag, the system will save a new snapshot of the VM and store the new snapshot
+ID in the config file. This option is meant to mainly be used in conjunction with `--update`,
+e.g as an automatic routine patching procedure.
+
