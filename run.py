@@ -289,7 +289,7 @@ class CiRunner:
         Then either reboot (if we are going to run CI as
         the next step) or power off the VM otherwise.
         """
-        print(f"Applying updates on {self.vm.name} first before commencing CI")
+        print(f"Applying updates on {self.vm.name}")
         commands = [
             ("/usr/bin/sudo", "/usr/bin/qubesctl --show-output state.sls update.qubes-dom0"),
             ("/usr/bin/sudo", "/usr/bin/qubesctl --show-output --skip-dom0 --templates --standalones state.sls update.qubes-vm"),
@@ -425,7 +425,7 @@ class CiRunner:
         self.remove_old_snapshots(prefix="update_", keep=3)
 
 
-    def main(self, version, commit=False, snapshot_name=False, update=False, save=False):
+    def main(self, version, commit=False, snapshot_name=False, update=False):
         """
         Main entry point to the script.
 
@@ -501,14 +501,6 @@ class CiRunner:
 
                         # Return here, so that we never risk saving the post-CI state to snapshot
                         return True
-
-                    # If we passed the '--save' arg, it means we want to take a new snapshot and store
-                    # it in config. This is usually used in conjunction with --update to perform
-                    # routine patching and use the resulting machine as the snapshot for future CI runs.
-                    if save:
-                        self.take_snapshot()
-                        # Return here to end the loop
-                        return True
                 except Exception as e:
                     print(f"Error occurred during execution: {e}")
                     self.vm.PowerOffVM_Task()
@@ -523,7 +515,56 @@ class CiRunner:
             raise SystemError("Gave up after 1 hour trying to find a VM to run CI on.")
 
 
+    def save(self, version, snapshot_name, update):
+        """
+        Functionality to (optionally) perform updates and save
+        a new snapshot.
+        This log is separate to the above main() run because it
+        needs to iterate over *each* VM that matches the version,
+        not just the first one it finds a match for.
+        """
+        self.content = self.si.RetrieveContent()
+        vm_folder = self.content.rootFolder.childEntity[0].vmFolder
+        source_vm_name = f"Qubes_{version}"
+
+        for vm in vm_folder.childEntity:
+            state = vm.runtime.powerState
+            if source_vm_name in vm.name and state == "poweredOff":
+                self.vm = vm
+                # If no snapshot was specified explicitly, fetch the latest ID
+                # from the config file for this version.
+                if not snapshot_name:
+                    snapshot_name = self.config.get(self.vm.config.uuid, "snapshot")
+
+                # Restore to known clean snapshot
+                snapshot = self.get_snapshot_by_name(snapshot_name)
+                if snapshot:
+                    print(f"First reverting {self.vm.name} to snapshot {snapshot_name}")
+                    WaitForTask(snapshot.RevertToSnapshot_Task())
+                else:
+                    raise SystemError(
+                        f"Could not find snapshot with name {snapshot_name} for {self.vm.name}"
+                    )
+
+                # Power on VM
+                self.startup()
+                try:
+                    # If we are doing a nightly test, apply updates and reboot, reconnect
+                    if update:
+                        self.apply_updates(False)
+                    self.take_snapshot()
+                except Exception as e:
+                    # Don't abort, we want want to move on to the next machine
+                    print(f"Error occurred during execution: {e}")
+                    self.vm.PowerOffVM_Task()
+
+
 if __name__ == "__main__":
     args = parse_args()
+
     ci = CiRunner()
-    ci.main(args.version, args.commit, args.snapshot, args.update, args.save)
+
+    if args.save:
+        ci.save(args.version, args.snapshot, args.update)
+    else:
+        ci.main(args.version, args.commit, args.snapshot, args.update)
