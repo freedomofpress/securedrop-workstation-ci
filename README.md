@@ -11,15 +11,17 @@ Please see the [INSTALL.md](INSTALL.md).
 
 ## How it works
 
+![Architecture diagram](SD_Qubes_CI.png)
+
 1. The webhook in Github delivers the payload to a remote server via HTTPS.
 
 2. The server passes that payload to a Flask service that parses the payload. This service
    then posts a commit status to Github saying the build is 'queued'.
 
-3. The Flask service executes the `run.py` script which makes calls to a VMware hypervisor
-   to find a Qubes VM with a matching version, restore it from snapshot and boot it.
+3. The Flask service executes the `run.py` script which makes calls to a hypervisor (currently
+   VMware) to find a Qubes VM with a matching version, restore it from snapshot and boot it.
 
-4. The script adds various files to the dom0 and sd-dev StandaloneVM.
+4. The script adds various files to the dom0 and the sd-dev StandaloneVM on that Qubes VM.
 
 5. The script then instructs dom0 to run a command on the sd-dev StandaloneVM to clone the
    SDW CI repository and then issue an RPC call to the dom0 to run the `dom0/runner.py`
