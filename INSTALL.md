@@ -128,3 +128,15 @@ If you pass this flag, the system will save a new snapshot of the VM and store t
 ID in the config file. This option is meant to mainly be used in conjunction with `--update`,
 e.g as an automatic routine patching procedure.
 
+
+# Options for `nightlies.py`
+
+The `nightlies.py` script is designed to run via cron or similar schedule. It takes `--branch` as
+an argument.
+
+It will clone the repo, check out that branch, detect the appropriate Qubes version from that
+branch, detect the latest commit, then run `run.py` with the flag `--update` and the `--commit`
+hash.
+
+This is designed to apply software updates in Qubes, stop/start the guest and then proceed with
+CI.
