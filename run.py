@@ -445,7 +445,6 @@ class CiRunner:
         now = datetime.now()
         date_name = now.strftime("%Y-%m-%d")
         time_name = now.strftime("%H%M%S%f")
-        log_file = f"{date_name}-{time_name}.log.txt"
 
         # Start a loop to try and find a VM to run tasks on.
         start_time = time.time()
@@ -468,6 +467,8 @@ class CiRunner:
                 # Great, the machine matches the version we want and it is off,
                 # meaning it is not running any CI
                 print(f"Using machine {self.vm.name} for CI")
+
+                log_file = f"{date_name}-{time_name}-{commit}-{self.vm.name}.log.txt"
 
                 # If no snapshot was specified explicitly, fetch the latest ID
                 # from the config file for this version.
