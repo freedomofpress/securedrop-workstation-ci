@@ -37,10 +37,10 @@ sudo qubes-dom0-update make open-vm-tools
 
 6. Run any updates you see in the Qubes menu and then reboot.
 
-7. In dom0, create the sd-dev StandaloneVM:
+7. In dom0, create the sd-dev StandaloneVM. If it's Qubes 4.2, you can use the fedora-38-xfce template.
 
 ```
-sudo qvm-create --standalone --template fedora-37 --label red sd-dev
+sudo qvm-create --standalone --template fedora-38 --label red sd-dev
 qvm-volume resize sd-dev:root 50G
 qvm-volume resize sd-dev:private 20G
 qvm-tags sd-dev add sd-client
@@ -62,7 +62,7 @@ sudo dnf install rpm-build dnf-plugins-core
 sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
 sudo dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 sudo usermod -a -G docker user
-systemctl enable docker
+sudo systemctl enable docker
 ```
 
 Set up the sd-dev machine to automatically start at boot.
@@ -118,9 +118,9 @@ start')
 If you pass this flag, the system will boot the Qubes VM and run dom0, template and StandaloneVM
 updates via salt in the standard Qubes way.
 
-If you also passed `--commit`, it will be undertood that you want to run CI tests immediataly
-after having applied the updates. In this case, it will reboot the VM. This flow is useful for
-running 'nightly' tests.
+If you also passed `--commit`, it will be undertood that you want to run CI tests immediately
+after having applied the updates. In this case, it will reboot the VM after applying updates
+but before running the CI test suite. This flow is useful for running 'nightly' tests.
 
 ## `--save`
 
