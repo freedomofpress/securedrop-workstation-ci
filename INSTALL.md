@@ -43,7 +43,6 @@ sudo qubes-dom0-update make open-vm-tools
 sudo qvm-create --standalone --template fedora-38 --label red sd-dev
 qvm-volume resize sd-dev:root 50G
 qvm-volume resize sd-dev:private 20G
-qvm-tags sd-dev add sd-client
 ```
 
 Also ensure that you check the box to 'Start qube automatically on boot' in the Qubes settings.
