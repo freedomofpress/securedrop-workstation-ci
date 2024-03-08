@@ -468,8 +468,6 @@ class CiRunner:
                 # meaning it is not running any CI
                 print(f"Using machine {self.vm.name} for CI")
 
-                log_file = f"{date_name}-{time_name}-{commit}-{self.vm.name}.log.txt"
-
                 # If no snapshot was specified explicitly, fetch the latest ID
                 # from the config file for this version.
                 if not snapshot_name:
@@ -484,6 +482,11 @@ class CiRunner:
                     raise SystemError(
                         f"Could not find snapshot with name {snapshot_name} for {self.vm.name}"
                     )
+
+                # Use snapshot in the log file name, but make sure it has no spaces
+                snapshot_name_for_log = snapshot_name.replace(' ', '-')
+
+                log_file = f"{date_name}-{time_name}-{commit}-{self.vm.name}-{snapshot_name_for_log}.log.txt"
 
                 # Power on VM
                 self.startup()
