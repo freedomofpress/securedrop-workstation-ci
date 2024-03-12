@@ -535,13 +535,15 @@ class CiRunner:
             state = vm.runtime.powerState
             if source_vm_name in vm.name and state == "poweredOff":
                 self.vm = vm
-                # If no snapshot was specified explicitly, fetch the latest ID
-                # from the config file for this version.
+                # Fetch the latest snapshot ID from the config file for this VM
+                # if we didn't explicitly pass one in as an arg
                 if not snapshot_name:
-                    snapshot_name = self.config.get(self.vm.config.uuid, "snapshot")
+                    s = self.config.get(self.vm.config.uuid, "snapshot")
+                else:
+                    s = snapshot_name
 
                 # Restore to known clean snapshot
-                snapshot = self.get_snapshot_by_name(snapshot_name)
+                snapshot = self.get_snapshot_by_name(s)
                 if snapshot:
                     print(f"First reverting {self.vm.name} to snapshot {snapshot_name}")
                     WaitForTask(snapshot.RevertToSnapshot_Task())
