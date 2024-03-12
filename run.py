@@ -545,11 +545,11 @@ class CiRunner:
                 # Restore to known clean snapshot
                 snapshot = self.get_snapshot_by_name(s)
                 if snapshot:
-                    print(f"First reverting {self.vm.name} to snapshot {snapshot_name}")
+                    print(f"First reverting {self.vm.name} to snapshot {s}")
                     WaitForTask(snapshot.RevertToSnapshot_Task())
                 else:
                     raise SystemError(
-                        f"Could not find snapshot with name {snapshot_name} for {self.vm.name}"
+                        f"Could not find snapshot with name {s} for {self.vm.name}"
                     )
 
                 # Power on VM
