@@ -47,12 +47,12 @@ qvm-volume resize sd-dev:private 20G
 
 Also ensure that you check the box to 'Start qube automatically on boot' in the Qubes settings.
 
-# Install podman on sd-dev VM
+# Install podman and make on sd-dev VM
 
-Open a terminal in the sd-dev VM and perform the following steps to install podman:
+Open a terminal in the sd-dev VM and perform the following steps:
 
 ```
-sudo apt-get install podman
+sudo apt-get install make podman
 ```
 
 # Snapshot the VM
