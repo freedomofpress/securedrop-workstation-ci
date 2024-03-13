@@ -37,34 +37,23 @@ sudo qubes-dom0-update make open-vm-tools
 
 6. Run any updates you see in the Qubes menu and then reboot.
 
-7. In dom0, create the sd-dev StandaloneVM. If it's Qubes 4.2, you can use the fedora-38-xfce template.
+7. In dom0, create the sd-dev StandaloneVM. If it's Qubes 4.2, you can use the debian-12-xfce template.
 
 ```
-sudo qvm-create --standalone --template fedora-38 --label red sd-dev
+sudo qvm-create --standalone --template debian-11 --label red sd-dev
 qvm-volume resize sd-dev:root 50G
 qvm-volume resize sd-dev:private 20G
 ```
 
 Also ensure that you check the box to 'Start qube automatically on boot' in the Qubes settings.
 
-# Install dependencies on sd-dev VM
+# Install podman on sd-dev VM
 
-1. Open a terminal in the sd-dev VM and perform the following steps to install the core dependencies:
-
-```
-sudo dnf install rpm-build dnf-plugins-core
-```
-
-2. Setup docker:
+Open a terminal in the sd-dev VM and perform the following steps to install podman:
 
 ```
-sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
-sudo dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-sudo usermod -a -G docker user
-sudo systemctl enable docker
+sudo apt-get install podman
 ```
-
-Set up the sd-dev machine to automatically start at boot.
 
 # Snapshot the VM
 
