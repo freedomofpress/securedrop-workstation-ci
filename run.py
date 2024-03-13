@@ -3,12 +3,14 @@ import argparse
 import atexit
 import certifi
 import configparser
+import logging
 import os
 import re
 import requests
 import ssl
 import time
 from datetime import datetime
+from logging.handlers import SysLogHandler
 from pyVim.connect import SmartConnect, Disconnect
 from pyVim.task import WaitForTask
 from pyVmomi import vim
@@ -64,6 +66,15 @@ class CiRunner:
         """
         Set up the CiRunner class with attributes required.
         """
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        handler = SysLogHandler(
+            facility=SysLogHandler.LOG_DAEMON,
+            address="/dev/log"
+        )
+        handler.setFormatter(logging.Formatter('ws-ci-runner: %(message)s'))
+        self.logger.addHandler(handler)
+
         # Read ESXi server details from config file
         self.config = configparser.ConfigParser()
         home_dir = os.path.expanduser("~")
@@ -153,26 +164,26 @@ class CiRunner:
                 pid_exitcode = self.pm.ListProcessesInGuest(self.vm, self.creds, [res]).pop().exitCode
                 # If it's not a numeric result code, it says None on submit
                 while re.match('[^0-9]+', str(pid_exitcode)):
-                    print("Program running, PID is %d" % res)
+                    self.logger.debug("Program running, PID is %d" % res)
                     time.sleep(5)
                     pid_exitcode = self.pm.ListProcessesInGuest(self.vm, self.creds, [res]).pop().exitCode
                     if pid_exitcode == 0:
-                        print("Program %d completed with success" % res)
+                        self.logger.debug("Program %d completed with success" % res)
                         break
                     # Look for non-zero code to fail
                     elif re.match('[1-9]+', str(pid_exitcode)):
-                        print("ERROR: Program %d completed with Failure" % res)
-                        print("ERROR: More info on process")
-                        print(self.pm.ListProcessesInGuest(self.vm, self.creds, [res]))
+                        self.logger.debug("ERROR: Program %d completed with Failure" % res)
+                        self.logger.debug("ERROR: More info on process")
+                        self.logger.debug(self.pm.ListProcessesInGuest(self.vm, self.creds, [res]))
                         break
             else:
                 time.sleep(5)
                 pid_exitcode = self.pm.ListProcessesInGuest(self.vm, self.creds, [res]).pop().exitCode
                 # Look for non-zero code to fail
                 if re.match("[1-9]+", str(pid_exitcode)):
-                    print("ERROR: Program %d completed with Failure" % res)
-                    print("ERROR: More info on process")
-                    print(self.pm.ListProcessesInGuest(self.vm, self.creds, [res]))
+                    self.logger.debug("ERROR: Program %d completed with Failure" % res)
+                    self.logger.debug("ERROR: More info on process")
+                    self.logger.debug(self.pm.ListProcessesInGuest(self.vm, self.creds, [res]))
                     raise SystemError("Error running command in dom0")
 
 
@@ -222,7 +233,7 @@ class CiRunner:
             if not resp.status_code == 200:
                 raise SystemError(f"Error while uploading file {dom0_file}")
             else:
-                print(f"Successfully uploaded {dom0_file} into dom0")
+                self.logger.debug(f"Successfully uploaded {dom0_file} into dom0")
 
         # Move the RPC files into place and with appropriate perms
         commands = [
@@ -259,7 +270,7 @@ class CiRunner:
             if not resp.status_code == 200:
                 raise SystemError(f"Error while uploading file {sd_dev_file}")
             else:
-                print(f"Successfully uploaded the file {sd_dev_file} into dom0")
+                self.logger.debug(f"Successfully uploaded the file {sd_dev_file} into dom0")
 
         # Now copy the files into place
         commands = [
@@ -292,7 +303,7 @@ class CiRunner:
         Then either reboot (if we are going to run CI as
         the next step) or power off the VM otherwise.
         """
-        print(f"Applying updates on {self.vm.name}")
+        self.logger.debug(f"Applying updates on {self.vm.name}")
         commands = [
             ("/usr/bin/sudo", "/usr/bin/qubesctl --show-output state.sls update.qubes-dom0"),
             ("/usr/bin/sudo", "/usr/bin/qubesctl --show-output --skip-dom0 --templates --standalones state.sls update.qubes-vm"),
@@ -319,7 +330,7 @@ class CiRunner:
         self.run_command_in_dom0("/usr/bin/echo", f"{log_file} | /usr/bin/tee /home/user/.logfile")
 
         # Now execute the command on sd-dev to run the test suite
-        print(f"Commencing the CI execution on {self.vm.name}")
+        self.logger.debug(f"Commencing the CI execution on {self.vm.name}")
         cmd = f"sd-dev /usr/bin/python3 /home/user/bin/begin.py --commit {commit}"
         self.run_command_in_dom0("/usr/bin/qvm-run", cmd)
 
@@ -354,7 +365,7 @@ class CiRunner:
         # Delete snapshots that are not in the snapshots_to_keep list
         for snapshot in update_snapshots[3:]:
             if snapshot not in snapshots_to_keep:
-                print(f"Deleting old snapshot: {snapshot.name}")
+                self.logger.debug(f"Deleting old snapshot: {snapshot.name}")
                 task = snapshot.snapshot.RemoveSnapshot_Task(removeChildren=False)
                 WaitForTask(task)
 
@@ -363,7 +374,7 @@ class CiRunner:
         """
         Shutdown and then power off the VM.
         """
-        print(f"Shutting down {self.vm.name}")
+        self.logger.debug(f"Shutting down {self.vm.name}")
         self.vm.ShutdownGuest()
         time.sleep(30)
         state = self.vm.runtime.powerState
@@ -375,7 +386,7 @@ class CiRunner:
         """
         Power up the VM.
         """
-        print(f"Powering on {self.vm.name}")
+        self.logger.debug(f"Powering on {self.vm.name}")
         WaitForTask(self.vm.PowerOnVM_Task())
 
         # Give some time to let Qubes boot up.
@@ -385,12 +396,12 @@ class CiRunner:
             if self.vm.runtime.powerState == "poweredOn":
                 if self.vm.guest.toolsStatus == vim.vm.GuestInfo.ToolsStatus.toolsOk:
                     time.sleep(60)
-                    print(f"VM {self.vm.name} is now ready, moving on with next steps")
+                    self.logger.debug(f"VM {self.vm.name} is now ready, moving on with next steps")
                     break
                 else:
-                    print(f"VM {self.vm.name} is not yet fully booted, waiting for it to be ready")
+                    self.logger.debug(f"VM {self.vm.name} is not yet fully booted, waiting for it to be ready")
             else:
-                print(f"VM {self.vm.name} is not yet powered on.")
+                self.logger.debug(f"VM {self.vm.name} is not yet powered on.")
 
             time.sleep(10)
             power_on_attempts += 1
@@ -413,11 +424,11 @@ class CiRunner:
         new_snapshot_desc = f"Snapshot taken at {human_timestamp} after applying updates"
         dumpMemory = False
         quiesce = False
-        print(f"Taking snapshot of {self.vm.name} with snapshot ID {new_snapshot_name}")
+        self.logger.debug(f"Taking snapshot of {self.vm.name} with snapshot ID {new_snapshot_name}")
         WaitForTask(self.vm.CreateSnapshot(new_snapshot_name, new_snapshot_desc, dumpMemory, quiesce))
 
         # Save the changes to the config file
-        print("Saving the snapshot info to config for future runs")
+        self.logger.debug("Saving the snapshot info to config for future runs")
         if not self.config.has_section(self.vm.config.uuid):
             self.config.add_section(self.vm.config.uuid)
         self.config.set(self.vm.config.uuid, "snapshot", new_snapshot_name)
@@ -469,7 +480,7 @@ class CiRunner:
             if self.vm:
                 # Great, the machine matches the version we want and it is off,
                 # meaning it is not running any CI
-                print(f"Using machine {self.vm.name} for CI")
+                self.logger.debug(f"Using machine {self.vm.name} for CI")
 
                 # If no snapshot was specified explicitly, fetch the latest ID
                 # from the config file for this version.
@@ -479,7 +490,7 @@ class CiRunner:
                 # Restore to known clean snapshot
                 snapshot = self.get_snapshot_by_name(snapshot_name)
                 if snapshot:
-                    print(f"First reverting {self.vm.name} to snapshot {snapshot_name}")
+                    self.logger.debug(f"First reverting {self.vm.name} to snapshot {snapshot_name}")
                     WaitForTask(snapshot.RevertToSnapshot_Task())
                 else:
                     raise SystemError(
@@ -509,12 +520,12 @@ class CiRunner:
                         # Return here, so that we never risk saving the post-CI state to snapshot
                         return True
                 except Exception as e:
-                    print(f"Error occurred during execution: {e}")
+                    self.logger.debug(f"Error occurred during execution: {e}")
                     self.vm.PowerOffVM_Task()
                     return False
             else:
                 # Continue to the next iteration if the desired VM is not found
-                print(
+                self.logger.debug(
                     f"Couldn't find any VMs matching version {version} that are not in use, sleeping for 60 seconds"
                 )
                 time.sleep(60)
@@ -548,7 +559,7 @@ class CiRunner:
                 # Restore to known clean snapshot
                 snapshot = self.get_snapshot_by_name(s)
                 if snapshot:
-                    print(f"First reverting {self.vm.name} to snapshot {s}")
+                    self.logger.debug(f"First reverting {self.vm.name} to snapshot {s}")
                     WaitForTask(snapshot.RevertToSnapshot_Task())
                 else:
                     raise SystemError(
@@ -564,7 +575,7 @@ class CiRunner:
                     self.take_snapshot()
                 except Exception as e:
                     # Don't abort, we want want to move on to the next machine
-                    print(f"Error occurred during execution: {e}")
+                    self.logger.debug(f"Error occurred during execution: {e}")
                     self.vm.PowerOffVM_Task()
 
 
