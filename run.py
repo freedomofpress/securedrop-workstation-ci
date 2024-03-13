@@ -237,6 +237,7 @@ class CiRunner:
             "bin/status.py",
             "bin/begin.py",
             ".sdci-ghp.txt",
+            ".slack-webhook.txt",
         ]
 
         for sd_dev_file in FILES_FOR_SD_DEV:
@@ -265,7 +266,9 @@ class CiRunner:
             ("/usr/bin/qvm-copy-to-vm", "sd-dev /home/user/sd-dev/bin"),
             ("/usr/bin/qvm-run", "sd-dev mv /home/user/QubesIncoming/dom0/bin /home/user/"),
             ("/usr/bin/qvm-copy-to-vm", "sd-dev /home/user/sd-dev/.sdci-ghp.txt"),
+            ("/usr/bin/qvm-copy-to-vm", "sd-dev /home/user/sd-dev/.slack-webhook.txt"),
             ("/usr/bin/qvm-run", "sd-dev mv /home/user/QubesIncoming/dom0/.sdci-ghp.txt /home/user/"),
+            ("/usr/bin/qvm-run", "sd-dev mv /home/user/QubesIncoming/dom0/.slack-webhook.txt /home/user/"),
         ]
         self.run_command_chain(commands)
 

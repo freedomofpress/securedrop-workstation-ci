@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import requests
 
 
@@ -31,7 +32,7 @@ def parse_args():
     return args
 
 
-def report_status(status, sha, log):
+def commit_status(status, sha, log):
     """
     Reports a Github commit status
     """
@@ -74,8 +75,47 @@ def report_status(status, sha, log):
     requests.post(f"https://api.github.com/repos/freedomofpress/securedrop-workstation/statuses/{sha}", json=data, headers=headers)
 
 
+def notify_slack(status, log):
+    """
+    Notifies Slack if the build failed somehow.
+    """
+    with open("/home/user/.slack-webhook.txt", "r") as s:
+        slack_webhook_url = s.readline().strip()
+
+    if status == "error" or status == "failure":
+        message = {
+            "attachments": [
+                {
+                    "color": "danger",
+                    "text": "[FAIL] SDW CI job failed.",
+                    "fallback": "SDW CI job failed.",
+                    "actions": [
+                        {
+                            "type": "button",
+                            "text": "View Log Output",
+                            "url": f"https://ws-ci-runner.securedrop.org/{log}"
+                        }
+                    ]
+                }
+            ]
+        }
+        # Convert the message to JSON
+        json_message = json.dumps(message)
+
+        # Attempt to post the message to Slack
+        try:
+            response = requests.post(slack_webhook_url, data=json_message, headers={'Content-Type': 'application/json'})
+            response.raise_for_status()
+        except requests.exceptions.HTTPError:
+            raise SystemError("HTTP error while contacting Slack")
+        except Exception as err:
+            raise SystemError(f"Other error occurred while contacting Slack: {err}")
+
+
 if __name__ == "__main__":
     # Parse args
     args = parse_args()
     # Report Github status check
-    report_status(args.status, args.sha, args.log)
+    commit_status(args.status, args.sha, args.log)
+    # Slack notification for unsuccessful runs
+    notify_slack(args.status, args.log)
