@@ -38,16 +38,11 @@ def run(commit):
     subprocess.check_call(["git", "checkout", commit], cwd=f"{working_dir}/{workspace}")
 
     # Copy the config files we need
-    config_url = f"https://github.com/{owner}/{repo}/raw/main/files/config.json.example"
-    config_response = requests.get(config_url)
-    with open(os.path.join(f"{working_dir}/{workspace}", "config.json"), "wb") as config_file:
-        config_file.write(config_response.content)
+    if os.path.exists(f"{working_dir}/{workspace}/files/config.json.example"):
+        shutil.copy(f"{working_dir}/{workspace}/files/config.json.example", f"{working_dir}/{workspace}/config.json")
 
-    # Download sd-journalist.sec.example
-    sd_journalist_url = f"https://github.com/{owner}/{repo}/raw/main/sd-journalist.sec.example"
-    sd_journalist_response = requests.get(sd_journalist_url)
-    with open(os.path.join(f"{working_dir}/{workspace}", "sd-journalist.sec"), "wb") as sd_journalist_file:
-        sd_journalist_file.write(sd_journalist_response.content)
+    if os.path.exists(f"{working_dir}/{workspace}/sd-journalist.sec.example"):
+        shutil.copy(f"{working_dir}/{workspace}/sd-journalist.sec.example", f"{working_dir}/{workspace}/sd-journalist.sec")
 
     # Post pending status back to Github
     subprocess.check_call([
