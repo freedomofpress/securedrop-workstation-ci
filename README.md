@@ -11,7 +11,7 @@ Please see the [INSTALL.md](INSTALL.md).
 
 ## How it works
 
-![Architecture diagram](SD_Qubes_CI.png)
+![Flow diagram](Flow_Diagram.png)
 
 1. The webhook in Github delivers the payload to a remote server via HTTPS.
 
