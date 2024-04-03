@@ -75,6 +75,21 @@ class QubesCI:
             ]
         )
 
+    def shutdown_sd_vms(self):
+        """
+        Shut down sd-workstation-tagged VMs.
+
+        This should be done before dom0 tests, to ensure that the
+        AppVMs tested have the latest TemplateVM changes.
+        """
+        self.logging.info("Shutting down SecureDrop Workstation VMs")
+        sdw_vms = [vm for vm in self.q.domains if "sd-workstation" in vm.tags]
+
+        for vm in sdw_vms:
+            if vm.is_running():
+                self.logging.info(f"Shutting down {vm.klass}: {vm.name}")
+                vm.shutdown(force=True)
+
     def run_cmd(self, cmd):
         """
         Run any command as a subprocess, and ensure both its
@@ -157,8 +172,15 @@ class QubesCI:
         os.chdir(self.working_dir)
         self.run_cmd("make clone")
         self.run_cmd("make dev")
+        self.shutdown_sd_vms()
         self.run_cmd("make test")
 
+    def systemInfo(self):
+        """
+        Report system information before running tests - for now just super basic,
+        dump /etc/os-release so we know what OS version we're working with.
+        """
+        self.run_cmd("cat /etc/os-release")
 
     def reportStatus(self):
         """
@@ -178,9 +200,11 @@ class QubesCI:
                 self.commit_sha,
             ]
         )
+
+
 if __name__ == "__main__":
     ci = QubesCI()
+    ci.systemInfo()
     ci.build()
     ci.test()
     ci.reportStatus()
-
