@@ -56,6 +56,7 @@ def nightly(branch):
                 qubes_version = yaml_data["qubes"]
                 if re.match(r'^\d+\.\d+$', qubes_version):
                     subprocess.Popen([
+                        "/home/wscirunner/venv/bin/python",
                         "/home/wscirunner/securedrop-workstation-ci/run.py",
                         "--version",
                         qubes_version,
