@@ -8,6 +8,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 import getpass
 from datetime import datetime
 
@@ -89,6 +90,19 @@ class QubesCI:
             if vm.is_running():
                 self.logging.info(f"Shutting down {vm.klass}: {vm.name}")
                 vm.shutdown(force=True)
+        # Wait for all VMs to shut down
+        waited = 0
+        while any(vm.is_running() for vm in sdw_vms):
+            time.sleep(1)
+            waited += 1
+            if waited >= 60:
+                msg = "Timed out waiting for SecureDrop Workstation VMs to shut down"
+                self.logging.info(msg)
+                self.status = "failure"
+                # We failed on a step, so stop the build and report the status and log
+                self.reportStatus()
+                raise SystemExit(msg)
+        self.logging.info("All SecureDrop Workstation VMs shut down")
 
     def run_cmd(self, cmd):
         """
