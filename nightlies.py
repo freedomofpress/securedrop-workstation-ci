@@ -62,7 +62,9 @@ def nightly(branch):
                         qubes_version,
                         "--update",
                         "--commit",
-                        commit
+                        commit,
+                        "--context",
+                        "nightly"
                     ],cwd="/home/wscirunner/securedrop-workstation-ci")
                 else:
                     logging.info(f"Didn't recognise the qubes version in the YAML file {ci_file}.")

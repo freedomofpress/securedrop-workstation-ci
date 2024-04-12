@@ -36,6 +36,13 @@ def parse_args():
         help="Git commit to run CI against",
     )
     parser.add_argument(
+        "--context",
+        default="push",
+        required=False,
+        action="store",
+        help="A context to help explain why the build ran. Used only in the Slack notification",
+    )
+    parser.add_argument(
         "--snapshot",
         default=False,
         required=False,
@@ -314,7 +321,7 @@ class CiRunner:
             self.startup()
 
 
-    def run_ci(self, commit, log_file):
+    def run_ci(self, commit, context, log_file):
         """
         Store files on the dom0 and sd-dev VMs and then instruct
         dom0 to tell sd-dev to begin the CI execution.
@@ -331,7 +338,7 @@ class CiRunner:
 
         # Now execute the command on sd-dev to run the test suite
         self.logger.debug(f"Commencing the CI execution on {self.vm.name}")
-        cmd = f"sd-dev /usr/bin/python3 /home/user/bin/begin.py --commit {commit}"
+        cmd = f"sd-dev /usr/bin/python3 /home/user/bin/begin.py --commit {commit} --context {context}"
         self.run_command_in_dom0("/usr/bin/qvm-run", cmd)
 
         # Fetch the log file
@@ -439,7 +446,7 @@ class CiRunner:
         self.remove_old_snapshots(prefix="update_", keep=3)
 
 
-    def main(self, version, commit=False, snapshot_name=False, update=False):
+    def main(self, version, commit=False, snapshot_name=False, update=False, context=False):
         """
         Main entry point to the script.
 
@@ -515,7 +522,7 @@ class CiRunner:
 
                     # If we have a commit, it means we are wanting to run CI
                     if commit:
-                        self.run_ci(commit, log_file)
+                        self.run_ci(commit, context, log_file)
 
                         # Return here, so that we never risk saving the post-CI state to snapshot
                         return True
@@ -587,4 +594,4 @@ if __name__ == "__main__":
     if args.save:
         ci.save(args.version, args.snapshot, args.update)
     else:
-        ci.main(args.version, args.commit, args.snapshot, args.update)
+        ci.main(args.version, args.commit, args.snapshot, args.update, args.context)

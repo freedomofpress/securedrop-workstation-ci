@@ -1,6 +1,5 @@
 import argparse
 import os
-import requests
 import subprocess
 import shutil
 
@@ -16,10 +15,17 @@ def parse_args():
         action="store",
         help="Git commit to build from",
     )
+    parser.add_argument(
+        "--context",
+        default="push",
+        required=False,
+        action="store",
+        help="A context to help explain why the build ran. Used only in the Slack notification"
+    )
     args = parser.parse_args()
     return args
 
-def run(commit):
+def run(commit, context):
     owner = "freedomofpress"
     repo = "securedrop-workstation"
 
@@ -55,9 +61,9 @@ def run(commit):
     ])
 
     # RPC call to trigger running the build on dom0
-    p = subprocess.Popen(["qrexec-client-vm", "dom0", f"qubes.SDCIRunner+{workspace}"])
+    subprocess.Popen(["qrexec-client-vm", "dom0", f"qubes.SDCIRunner+{workspace}+{context}"])
 
 
 if __name__ == "__main__":
     args = parse_args()
-    run(args.commit)
+    run(args.commit, args.context)
