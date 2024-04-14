@@ -28,7 +28,6 @@ class QubesCI:
 
         # Set simpler variables for python use of the above env vars
         self.securedrop_dev_vm = os.environ["SECUREDROP_DEV_VM"]
-        self.securedrop_usb_vm = "sys-usb"
         self.securedrop_projects_dir = os.environ["SECUREDROP_PROJECTS_DIR"]
         self.securedrop_repo_dir = os.environ["SECUREDROP_REPO_DIR"]
         self.securedrop_dev_dir = os.environ["SECUREDROP_DEV_DIR"]
@@ -38,11 +37,6 @@ class QubesCI:
         self.username = getpass.getuser()
         self.home_dir = f"/home/{self.username}"
         self.working_dir = f"{self.home_dir}/{self.securedrop_dom0_dev_dir}"
-
-        # Load our QubesVM objects
-        self.q = qubesadmin.Qubes()
-        self.ssh_vm = self.q.domains[self.securedrop_dev_vm]
-        self.usb_vm = self.q.domains[self.securedrop_usb_vm]
 
         # Parse the sha out of the dir name
         self.commit_sha = self.securedrop_repo_dir.split("_")[1]
@@ -84,12 +78,15 @@ class QubesCI:
         AppVMs tested have the latest TemplateVM changes.
         """
         self.logging.info("Shutting down SecureDrop Workstation VMs")
-        sdw_vms = [vm for vm in self.q.domains if "sd-workstation" in vm.tags]
+        q = qubesadmin.Qubes()
+        sdw_vms = [vm for vm in q.domains if "sd-workstation" in vm.tags]
 
         for vm in sdw_vms:
             if vm.is_running():
                 self.logging.info(f"Shutting down {vm.klass}: {vm.name}")
                 vm.shutdown(force=True)
+            else:
+                self.logging.info(f"{vm.klass} {vm.name} is already shut down")
         # Wait for all VMs to shut down
         waited = 0
         while any(vm.is_running() for vm in sdw_vms):
