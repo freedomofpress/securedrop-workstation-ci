@@ -516,15 +516,16 @@ class CiRunner:
                     if update:
                         self.apply_updates(True)
 
-                    # If we have a commit, it means we are wanting to run CI
+                    # Load the context and get commit hash
                     context = json.loads(context)
                     commit = context.get("commit")
-                    if commit:
-                        log_file = f"{date_name}-{time_name}-{commit}-{self.vm.name}-{snapshot_name_for_log}.log.txt"
-                        self.run_ci(context, log_file)
+                    log_file = f"{date_name}-{time_name}-{commit}-{self.vm.name}-{snapshot_name_for_log}.log.txt"
 
-                        # Return here, so that we never risk saving the post-CI state to snapshot
-                        return True
+                    # Run CI
+                    self.run_ci(context, log_file)
+
+                    # Return here, so that we never risk saving the post-CI state to snapshot
+                    return True
                 except Exception as e:
                     self.logger.debug(f"Error occurred during execution: {e}")
                     self.vm.PowerOffVM_Task()
