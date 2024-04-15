@@ -20,7 +20,7 @@ def run():
             context = json.load(context_file)
     else:
         raise SystemError("context.json file not found!")
-    commit_sha = context.get("commit", False)
+    commit_sha = context.get("commit")
 
     workspace = f"{repo}_{commit_sha}"
 
