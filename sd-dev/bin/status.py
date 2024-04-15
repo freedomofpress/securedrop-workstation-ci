@@ -80,7 +80,7 @@ def notify_slack(status, log, context):
         slack_webhook_url = s.readline().strip()
 
     # Read context in from file
-    commit_message = context.get("message")
+    commit_message = context.get("message").split("\n")[0]
     commit_sha = context.get("commit")
     commit_author = context.get("author")
     reason = context.get("reason")
