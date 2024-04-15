@@ -2,6 +2,7 @@
 
 import argparse
 import git
+import json
 import logging
 import os
 import re
