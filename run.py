@@ -517,7 +517,8 @@ class CiRunner:
                         self.apply_updates(True)
 
                     # If we have a commit, it means we are wanting to run CI
-                    commit = context.get("commit", False)
+                    context = json.loads(context)
+                    commit = context.get("commit")
                     if commit:
                         log_file = f"{date_name}-{time_name}-{commit}-{self.vm.name}-{snapshot_name_for_log}.log.txt"
                         self.run_ci(context, log_file)
