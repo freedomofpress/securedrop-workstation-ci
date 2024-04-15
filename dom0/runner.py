@@ -21,13 +21,7 @@ class QubesCI:
         """
         os.environ["SECUREDROP_DEV_VM"] = "sd-dev"
         os.environ["SECUREDROP_PROJECTS_DIR"] = "/var/lib/sdci-ci-runner/"
-
-        # The first arg to the RPC call is the path to the SDW CI cloned codebase
-        # followed by the 'context' (reason) for the build, separated by a +
-        os.environ["SECUREDROP_REPO_DIR"] = sys.argv[1].split("+")[0]
-        # This sets the context for posting status updates back to Slack.
-        self.context = sys.argv[1].split("+")[1]
-
+        os.environ["SECUREDROP_REPO_DIR"] = sys.argv[1]
         os.environ["SECUREDROP_DEV_DIR"] = (
             os.environ["SECUREDROP_PROJECTS_DIR"] + os.environ["SECUREDROP_REPO_DIR"]
         )
@@ -70,9 +64,7 @@ class QubesCI:
                 "/usr/bin/python3",
                 "/home/user/bin/status.py",
                 "--status",
-                "running",
-                "--sha",
-                self.commit_sha,
+                "running"
             ]
         )
 
@@ -212,11 +204,7 @@ class QubesCI:
                 "--log",
                 self.log_file,
                 "--status",
-                self.status,
-                "--sha",
-                self.commit_sha,
-                "--context",
-                self.context,
+                self.status
             ]
         )
 

@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import requests
 
 
@@ -22,24 +23,11 @@ def parse_args():
             required=True,
             help="Status of the test to send as a Github commit status",
     )
-    parser.add_argument(
-            "--sha",
-            required=True,
-            action="store",
-            help="SHA commit hash to report the commit status for"
-    )
-    parser.add_argument(
-            "--context",
-            required=False,
-            action="store",
-            default="push",
-            help="A context to help explain why the build ran. Used only in the Slack notification"
-    )
     args = parser.parse_args()
     return args
 
 
-def commit_status(status, sha, log):
+def commit_status(status, log, context):
     """
     Reports a Github commit status
     """
@@ -79,23 +67,32 @@ def commit_status(status, sha, log):
         status = "pending"
     data["state"] = status
 
-    requests.post(f"https://api.github.com/repos/freedomofpress/securedrop-workstation/statuses/{sha}", json=data, headers=headers)
+    commit_sha = context.get("commit")
+
+    requests.post(f"https://api.github.com/repos/freedomofpress/securedrop-workstation/statuses/{commit_sha}", json=data, headers=headers)
 
 
-def notify_slack(status, sha, log, context=""):
+def notify_slack(status, log, context):
     """
     Notifies Slack if the build failed somehow.
     """
     with open("/home/user/.slack-webhook.txt", "r") as s:
         slack_webhook_url = s.readline().strip()
 
-    commit_url = f"https://github.com/freedomofpress/securedrop-workstation/commit/{sha}"
-    if context == "nightly":
+    # Read context in from file
+    commit_message = context.get("message")
+    commit_sha = context.get("commit")
+    commit_author = context.get("author")
+    reason = context.get("reason")
+
+    commit_url = f"https://github.com/freedomofpress/securedrop-workstation/commit/{commit_sha}"
+    if reason == "nightly":
         text = "This CI run was a nightly automated test of the HEAD commit"
-    elif context == "push":
-        text = f"This CI run was triggered by <{commit_url}|this commit>"
+    elif reason == "push":
+        text = "This CI run was triggered by"
     else:
-        text = context
+        text = reason
+    text = text + f": <{commit_url}|{commit_sha} by {commit_author}: {commit_message}>"
 
     if status == "error" or status == "failure":
         color = "danger"
@@ -144,7 +141,16 @@ def notify_slack(status, sha, log, context=""):
 if __name__ == "__main__":
     # Parse args
     args = parse_args()
+
+    # Read context in from file
+    context_filepath = "/home/user/QubesIncoming/dom0/context.json"
+    if os.path.exists(context_filepath):
+        with open(context_filepath, "r") as context_file:
+            context = json.load(context_file)
+    else:
+        raise SystemError("context.json file not found!")
+
     # Report Github status check
-    commit_status(args.status, args.sha, args.log)
+    commit_status(args.status, args.log, context)
     # Slack notification for unsuccessful runs
-    notify_slack(args.status, args.sha, args.log, args.context)
+    notify_slack(args.status, args.log, context)
