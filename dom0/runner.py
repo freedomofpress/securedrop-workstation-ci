@@ -101,7 +101,7 @@ class QubesCI:
                 raise SystemExit(msg)
         self.logging.info("All SecureDrop Workstation VMs shut down")
 
-    def run_cmd(self, cmd):
+    def run_cmd(self, cmd, env=None):
         """
         Run any command as a subprocess, and ensure both its
         stdout and stderr get logged to the logging handler.
@@ -129,8 +129,13 @@ class QubesCI:
         timestamp = format_current_timestamp()
         self.logging.info(f"[{timestamp}] Running: {cmd}")
 
+        merged_env = os.environ.copy()
+        if env is not None:
+            merged_env.update(env)
+
         p = subprocess.Popen(
             command_line_args,
+            env=merged_env,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -184,7 +189,7 @@ class QubesCI:
         self.run_cmd("make clone")
         self.run_cmd("make dev")
         self.shutdown_sd_vms()
-        self.run_cmd("make test")
+        self.run_cmd("make test", env={"CI": "true"})
 
     def systemInfo(self):
         """
