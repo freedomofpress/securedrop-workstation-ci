@@ -518,7 +518,7 @@ class CiRunner:
 
                     # Load the context and get commit hash
                     context = json.loads(context)
-                    commit = context.get("commit")
+                    commit = context["commit"]
                     log_file = f"{date_name}-{time_name}-{commit}-{self.vm.name}-{snapshot_name_for_log}.log.txt"
 
                     # Run CI
