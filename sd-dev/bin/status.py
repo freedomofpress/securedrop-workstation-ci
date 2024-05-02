@@ -194,5 +194,5 @@ if __name__ == "__main__":
     # Report Github status check
     status.commit_status(args.status, args.log)
 
-    # Slack notification for unsuccessful runs
+    # Slack notification for finished runs
     status.notify_slack(args.status, args.log)
