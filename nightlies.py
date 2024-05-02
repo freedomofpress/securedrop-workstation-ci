@@ -43,7 +43,7 @@ def nightly(branch):
         sha = commit.hexsha
 
         # Get the author
-        author = commit.author
+        author = commit.author.name
 
         # Get the commit message
         message = commit.message
