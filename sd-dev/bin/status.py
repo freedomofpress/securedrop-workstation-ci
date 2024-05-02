@@ -114,7 +114,7 @@ class Status:
 
     def notify_slack(self, status, log):
         """
-        Notifies Slack if the build failed somehow.
+        Notifies Slack upon build completion (whether success or failure/error)
         """
         with open("/home/user/.slack-webhook.txt", "r") as s:
             slack_webhook_url = s.readline().strip()
