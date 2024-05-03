@@ -2,6 +2,7 @@
 
 import argparse
 import git
+import json
 import logging
 import os
 import re
@@ -38,7 +39,14 @@ def nightly(branch):
         repo = git.Repo(repo_working_dir)
 
         # Get the latest commit SHA
-        commit = repo.head.commit.hexsha
+        commit = repo.head.commit
+        sha = commit.hexsha
+
+        # Get the author
+        author = commit.author.name
+
+        # Get the commit message
+        message = commit.message
 
         # Check if 'qubes' attribute exists in the YAML data.
         yaml_data = {}
@@ -55,14 +63,20 @@ def nightly(branch):
             if "qubes" in yaml_data:
                 qubes_version = yaml_data["qubes"]
                 if re.match(r'^\d+\.\d+$', qubes_version):
+                    context = {
+                        "commit": sha,
+                        "author": author,
+                        "message": message,
+                        "reason": "nightly"
+                    }
                     subprocess.Popen([
                         "/home/wscirunner/venv/bin/python",
                         "/home/wscirunner/securedrop-workstation-ci/run.py",
                         "--version",
                         qubes_version,
                         "--update",
-                        "--commit",
-                        commit
+                        "--context",
+                        json.dumps(context)
                     ],cwd="/home/wscirunner/securedrop-workstation-ci")
                 else:
                     logging.info(f"Didn't recognise the qubes version in the YAML file {ci_file}.")

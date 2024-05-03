@@ -3,6 +3,7 @@ import argparse
 import atexit
 import certifi
 import configparser
+import json
 import logging
 import os
 import re
@@ -29,11 +30,10 @@ def parse_args():
         help="Qubes version to run on",
     )
     parser.add_argument(
-        "--commit",
-        default=False,
+        "--context",
         required=False,
         action="store",
-        help="Git commit to run CI against",
+        help="A JSON object that represents the commit details and reason for this build.",
     )
     parser.add_argument(
         "--snapshot",
@@ -196,7 +196,7 @@ class CiRunner:
             self.run_command_in_dom0(command, args)
 
 
-    def store_files_in_dom0(self):
+    def store_files_in_dom0(self, context):
         """
         Stores various files on the dom0 and calls commands to move
         them to Qubes VMs.
@@ -244,11 +244,15 @@ class CiRunner:
         ]
         self.run_command_chain(commands)
 
+        with open(os.path.join(current_dir, "sd-dev", "context.json"), "w") as context_file:
+            json.dump(context, context_file, indent=4)
+
         FILES_FOR_SD_DEV = [
             "bin/status.py",
             "bin/begin.py",
             ".sdci-ghp.txt",
             ".slack-webhook.txt",
+            "context.json"
         ]
 
         for sd_dev_file in FILES_FOR_SD_DEV:
@@ -278,6 +282,7 @@ class CiRunner:
             ("/usr/bin/qvm-run", "sd-dev mv /home/user/QubesIncoming/dom0/bin /home/user/"),
             ("/usr/bin/qvm-copy-to-vm", "sd-dev /home/user/sd-dev/.sdci-ghp.txt"),
             ("/usr/bin/qvm-copy-to-vm", "sd-dev /home/user/sd-dev/.slack-webhook.txt"),
+            ("/usr/bin/qvm-copy-to-vm", "sd-dev /home/user/sd-dev/context.json"),
             ("/usr/bin/qvm-run", "sd-dev mv /home/user/QubesIncoming/dom0/.sdci-ghp.txt /home/user/"),
             ("/usr/bin/qvm-run", "sd-dev mv /home/user/QubesIncoming/dom0/.slack-webhook.txt /home/user/"),
         ]
@@ -297,7 +302,7 @@ class CiRunner:
             f.write(resp.content)
 
 
-    def apply_updates(self, commit):
+    def apply_updates(self, run_ci):
         """
         Run updates on dom0, templates and standalone VMs.
         Then either reboot (if we are going to run CI as
@@ -309,12 +314,12 @@ class CiRunner:
             ("/usr/bin/sudo", "/usr/bin/qubesctl --show-output --skip-dom0 --templates --standalones state.sls update.qubes-vm"),
         ]
         self.run_command_chain(commands)
-        if commit:
+        if run_ci:
             self.shutdown()
             self.startup()
 
 
-    def run_ci(self, commit, log_file):
+    def run_ci(self, context, log_file):
         """
         Store files on the dom0 and sd-dev VMs and then instruct
         dom0 to tell sd-dev to begin the CI execution.
@@ -322,7 +327,7 @@ class CiRunner:
         Finally, retrieve the log file from the CI execution and
         store it in /var/www/html/reports for viewing.
         """
-        self.store_files_in_dom0()
+        self.store_files_in_dom0(context)
 
         # Set the log file name that the dom0 runner.py should use. It needs to know
         # the name to set in the commit statuses to Github, but we also need to know
@@ -331,7 +336,7 @@ class CiRunner:
 
         # Now execute the command on sd-dev to run the test suite
         self.logger.debug(f"Commencing the CI execution on {self.vm.name}")
-        cmd = f"sd-dev /usr/bin/python3 /home/user/bin/begin.py --commit {commit}"
+        cmd = "sd-dev /usr/bin/python3 /home/user/bin/begin.py"
         self.run_command_in_dom0("/usr/bin/qvm-run", cmd)
 
         # Fetch the log file
@@ -439,14 +444,14 @@ class CiRunner:
         self.remove_old_snapshots(prefix="update_", keep=3)
 
 
-    def main(self, version, commit=False, snapshot_name=False, update=False):
+    def main(self, version, context, snapshot_name=False, update=False):
         """
         Main entry point to the script.
 
         Look for a VM that is powered off and which matches our desired version.
         If we find one, restore it to the desired snapshot and power it up.
 
-        Then run CI (if --commit passed in), update routines (if --update passed in),
+        Then run CI (if --context passed in), update routines (if --update passed in),
         saving new snapshot (if --save passed in).
 
         Finally, power off the VM again.
@@ -500,8 +505,6 @@ class CiRunner:
                 # Use snapshot in the log file name, but make sure it has no spaces
                 snapshot_name_for_log = snapshot_name.replace(' ', '-')
 
-                log_file = f"{date_name}-{time_name}-{commit}-{self.vm.name}-{snapshot_name_for_log}.log.txt"
-
                 # Power on VM
                 self.startup()
 
@@ -511,14 +514,18 @@ class CiRunner:
 
                     # If we are doing a nightly test, apply updates and reboot, reconnect
                     if update:
-                        self.apply_updates(commit)
+                        self.apply_updates(True)
 
-                    # If we have a commit, it means we are wanting to run CI
-                    if commit:
-                        self.run_ci(commit, log_file)
+                    # Load the context and get commit hash
+                    context = json.loads(context)
+                    commit = context["commit"]
+                    log_file = f"{date_name}-{time_name}-{commit}-{self.vm.name}-{snapshot_name_for_log}.log.txt"
 
-                        # Return here, so that we never risk saving the post-CI state to snapshot
-                        return True
+                    # Run CI
+                    self.run_ci(context, log_file)
+
+                    # Return here, so that we never risk saving the post-CI state to snapshot
+                    return True
                 except Exception as e:
                     self.logger.debug(f"Error occurred during execution: {e}")
                     self.vm.PowerOffVM_Task()
@@ -587,4 +594,4 @@ if __name__ == "__main__":
     if args.save:
         ci.save(args.version, args.snapshot, args.update)
     else:
-        ci.main(args.version, args.commit, args.snapshot, args.update)
+        ci.main(args.version, args.context, args.snapshot, args.update)

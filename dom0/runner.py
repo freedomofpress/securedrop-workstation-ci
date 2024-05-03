@@ -64,9 +64,7 @@ class QubesCI:
                 "/usr/bin/python3",
                 "/home/user/bin/status.py",
                 "--status",
-                "running",
-                "--sha",
-                self.commit_sha,
+                "running"
             ]
         )
 
@@ -211,9 +209,7 @@ class QubesCI:
                 "--log",
                 self.log_file,
                 "--status",
-                self.status,
-                "--sha",
-                self.commit_sha,
+                self.status
             ]
         )
 
