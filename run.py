@@ -244,7 +244,11 @@ class CiRunner:
         ]
         self.run_command_chain(commands)
 
-        with open(os.path.join(current_dir, "sd-dev", "context.json"), "w") as context_file:
+        # Write the JSON context to a file. Use the commit hash in the name
+        # to avoid a concurrent CI run clobbering the same file.
+        commit = context["commit"]
+        context_filename = f"context_{commit}.json"
+        with open(os.path.join(current_dir, "sd-dev", context_filename), "w") as context_file:
             json.dump(context, context_file, indent=4)
 
         FILES_FOR_SD_DEV = [
@@ -252,7 +256,7 @@ class CiRunner:
             "bin/begin.py",
             ".sdci-ghp.txt",
             ".slack-webhook.txt",
-            "context.json"
+            context_filename
         ]
 
         for sd_dev_file in FILES_FOR_SD_DEV:
@@ -282,11 +286,15 @@ class CiRunner:
             ("/usr/bin/qvm-run", "sd-dev mv /home/user/QubesIncoming/dom0/bin /home/user/"),
             ("/usr/bin/qvm-copy-to-vm", "sd-dev /home/user/sd-dev/.sdci-ghp.txt"),
             ("/usr/bin/qvm-copy-to-vm", "sd-dev /home/user/sd-dev/.slack-webhook.txt"),
-            ("/usr/bin/qvm-copy-to-vm", "sd-dev /home/user/sd-dev/context.json"),
+            ("/usr/bin/qvm-copy-to-vm", f"sd-dev /home/user/sd-dev/{context_filename}"),
             ("/usr/bin/qvm-run", "sd-dev mv /home/user/QubesIncoming/dom0/.sdci-ghp.txt /home/user/"),
             ("/usr/bin/qvm-run", "sd-dev mv /home/user/QubesIncoming/dom0/.slack-webhook.txt /home/user/"),
+            ("/usr/bin/qvm-run", f"sd-dev mv /home/user/QubesIncoming/dom0/{context_filename} /home/user/context.json"),
         ]
         self.run_command_chain(commands)
+
+        # Remove the context file from the working dir
+        os.remove(os.path.join(current_dir, "sd-dev", context_filename))
 
 
     def get_files_from_dom0(self, source, dest):

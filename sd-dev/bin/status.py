@@ -41,7 +41,7 @@ class Status:
         self.logger.addHandler(handler)
 
         # Read context in from file
-        context_filepath = "/home/user/QubesIncoming/dom0/context.json"
+        context_filepath = "/home/user/context.json"
         if os.path.exists(context_filepath):
             with open(context_filepath, "r") as context_file:
                 # Load in the JSON
