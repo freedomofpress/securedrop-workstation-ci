@@ -74,17 +74,6 @@ def run():
             f"{working_dir}/{workspace}/sd-journalist.sec",
         )
 
-    # Post pending status back to Github
-    logger.debug("Telling Github that the build is pending")
-    subprocess.check_call(
-        [
-            "/usr/bin/python3",
-            "/home/user/bin/status.py",
-            "--status",
-            "pending",
-        ]
-    )
-
     # RPC call to trigger running the build on dom0
     logger.debug("Telling dom0 to commence CI")
     subprocess.Popen(["qrexec-client-vm", "dom0", f"qubes.SDCIRunner+{workspace}"])
