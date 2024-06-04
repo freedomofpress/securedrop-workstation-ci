@@ -16,6 +16,8 @@ from pyVim.connect import SmartConnect, Disconnect
 from pyVim.task import WaitForTask
 from pyVmomi import vim
 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 def parse_args():
     """
@@ -146,6 +148,26 @@ class CiRunner:
                     return nested_snapshot.snapshot
         return None
 
+    def notify_github_queued(self, commit):
+        """Notify GitHub of queued status early, the rest are handled by status.py"""
+        with open(os.path.join(CURRENT_DIR, "sd-dev/.sdci-ghp.txt")) as f:
+            github_token = f.read().strip()
+        headers = {
+            "Authorization": f"Bearer {github_token}",
+            "Content-Type": "application/json",
+        }
+        data = {
+            "context": "sd-ci-runner",
+            "description": "The build is queued",
+            "state": "pending",
+        }
+        self.logger.debug(f"Posting queued commit status for {commit} to GitHub")
+        requests.post(
+            f"https://api.github.com/repos/freedomofpress/securedrop-workstation/statuses/{commit}",
+            json=data,
+            headers=headers,
+        )
+
 
     def run_command_in_dom0(self, command, args=False, wait=True):
         """
@@ -206,9 +228,8 @@ class CiRunner:
             "qubes.SDCIRunner",
             "qubes.SDCIRunner.policy",
         ]
-        current_dir = os.path.dirname(os.path.abspath(__file__))
         for dom0_file in FILES_FOR_DOM0:
-            file_path = os.path.join(current_dir, "dom0", dom0_file)
+            file_path = os.path.join(CURRENT_DIR, "dom0", dom0_file)
             with open(file_path, "rb") as myfile:
                 data_to_send = myfile.read()
 
@@ -248,7 +269,7 @@ class CiRunner:
         # to avoid a concurrent CI run clobbering the same file.
         commit = context["commit"]
         context_filename = f"context_{commit}.json"
-        with open(os.path.join(current_dir, "sd-dev", context_filename), "w") as context_file:
+        with open(os.path.join(CURRENT_DIR, "sd-dev", context_filename), "w") as context_file:
             json.dump(context, context_file, indent=4)
 
         FILES_FOR_SD_DEV = [
@@ -260,7 +281,7 @@ class CiRunner:
         ]
 
         for sd_dev_file in FILES_FOR_SD_DEV:
-            file_path = os.path.join(current_dir, "sd-dev", sd_dev_file)
+            file_path = os.path.join(CURRENT_DIR, "sd-dev", sd_dev_file)
             with open(file_path, "rb") as myfile:
                 data_to_send = myfile.read()
 
@@ -294,7 +315,7 @@ class CiRunner:
         self.run_command_chain(commands)
 
         # Remove the context file from the working dir
-        os.remove(os.path.join(current_dir, "sd-dev", context_filename))
+        os.remove(os.path.join(CURRENT_DIR, "sd-dev", context_filename))
 
 
     def get_files_from_dom0(self, source, dest):
@@ -473,6 +494,11 @@ class CiRunner:
         date_name = now.strftime("%Y-%m-%d")
         time_name = now.strftime("%H%M%S%f")
 
+        # Load the context and get commit hash
+        context = json.loads(context)
+        commit = context["commit"]
+        self.notify_github_queued(commit)
+
         # Start a loop to try and find a VM to run tasks on.
         start_time = time.time()
         # Loop until 2 hours have passed, then give up - no machines were available
@@ -524,9 +550,6 @@ class CiRunner:
                     if update:
                         self.apply_updates(True)
 
-                    # Load the context and get commit hash
-                    context = json.loads(context)
-                    commit = context["commit"]
                     log_file = f"{date_name}-{time_name}-{commit}-{self.vm.name}-{snapshot_name_for_log}.log.txt"
 
                     # Run CI
