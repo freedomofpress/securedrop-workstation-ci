@@ -153,6 +153,13 @@ class QubesCI:
         else:
             self.logging.info(f"[{timestamp}] Step finished")
 
+    def prepare(self):
+        """
+        Run any preparatory steps before we build and test
+        """
+        # synchronize dom0 clock
+        self.run_cmd("sudo qvm-sync-clock")
+
     def build(self):
         """
         Build the package
@@ -217,6 +224,7 @@ class QubesCI:
 if __name__ == "__main__":
     ci = QubesCI()
     ci.systemInfo()
+    ci.prepare()
     ci.build()
     ci.test()
     ci.reportStatus()
