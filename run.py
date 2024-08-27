@@ -339,8 +339,8 @@ class CiRunner:
         """
         self.logger.debug(f"Applying updates on {self.vm.name}")
         commands = [
-            ("/usr/bin/sudo", "/usr/bin/qubesctl --show-output state.sls update.qubes-dom0"),
-            ("/usr/bin/sudo", "/usr/bin/qubesctl --show-output --skip-dom0 --templates --standalones state.sls update.qubes-vm"),
+            ("/usr/bin/sudo", "/usr/bin/qubes-dom0-update"),
+            ("/usr/bin/sudo", "/usr/bin/qubes-vm-update --show-output --no-progress --templates --standalones --force-update --apply-to-all --max-concurrency 4"),
         ]
         self.run_command_chain(commands)
         if run_ci:
