@@ -160,6 +160,9 @@ class QubesCI:
         # synchronize dom0 clock
         self.run_cmd("sudo qvm-sync-clock")
 
+        # Install testing dependencies
+        self.run_cmd("sudo qubes-dom0-update -y python3-pytest python3-pytest-cov")
+
     def build(self):
         """
         Build the package
