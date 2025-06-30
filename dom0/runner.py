@@ -197,6 +197,10 @@ class QubesCI:
         self.run_cmd("make clone")
         self.run_cmd("make dev")
         self.shutdown_sd_vms()
+
+        # Simulate updater. Workaround for https://github.com/freedomofpress/securedrop-workstation/issues/1333
+        self.run_cmd("sudo qubes-vm-update --show-output --targets whonix-gateway-17 --force-update")
+
         self.run_cmd("make test", env={"CI": "true"})
 
     def systemInfo(self):
